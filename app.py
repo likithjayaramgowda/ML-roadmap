@@ -12,82 +12,374 @@ st.set_page_config(
 )
 
 def render_animated_background():
-    components.html("""
+    st.markdown("""
     <style>
-    #neural-bg {
+    .stApp {
+        background: #0D1117 !important;
+    }
+    #neural-canvas {
         position: fixed;
         top: 0; left: 0;
         width: 100vw; height: 100vh;
-        z-index: -1;
+        z-index: 0;
         pointer-events: none;
     }
+    .main .block-container {
+        position: relative;
+        z-index: 1;
+    }
+    section[data-testid="stSidebar"] {
+        z-index: 2;
+        background: #0D1117 !important;
+    }
     </style>
-    <canvas id="neural-bg"></canvas>
+    <canvas id="neural-canvas"></canvas>
     <script>
     (function() {
-        const canvas = document.getElementById('neural-bg');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        function initCanvas() {
+            const canvas = document.getElementById('neural-canvas');
+            if (!canvas) { setTimeout(initCanvas, 200); return; }
+            const ctx = canvas.getContext('2d');
 
-        const DOTS = 60;
-        const MAX_DIST = 160;
-        const dots = Array.from({length: DOTS}, () => ({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: (Math.random() - 0.5) * 0.5,
-            r: Math.random() * 2.5 + 1.5
-        }));
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            for (let i = 0; i < DOTS; i++) {
-                for (let j = i + 1; j < DOTS; j++) {
-                    const dx = dots[i].x - dots[j].x;
-                    const dy = dots[i].y - dots[j].y;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist < MAX_DIST) {
-                        const alpha = (1 - dist / MAX_DIST) * 0.35;
-                        ctx.strokeStyle = `rgba(93, 202, 165, ${alpha})`;
-                        ctx.lineWidth = 0.8;
-                        ctx.beginPath();
-                        ctx.moveTo(dots[i].x, dots[i].y);
-                        ctx.lineTo(dots[j].x, dots[j].y);
-                        ctx.stroke();
-                    }
-                }
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
             }
+            resize();
+            window.addEventListener('resize', resize);
 
-            dots.forEach(dot => {
-                ctx.beginPath();
-                ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(93, 202, 165, 0.7)';
-                ctx.fill();
-            });
+            const DOTS = 70;
+            const MAX_DIST = 150;
+            const dots = Array.from({length: DOTS}, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.45,
+                vy: (Math.random() - 0.5) * 0.45,
+                r: Math.random() * 2 + 1
+            }));
 
-            dots.forEach(dot => {
-                dot.x += dot.vx;
-                dot.y += dot.vy;
-                if (dot.x < 0 || dot.x > canvas.width) dot.vx *= -1;
-                if (dot.y < 0 || dot.y > canvas.height) dot.vy *= -1;
-            });
-
-            requestAnimationFrame(draw);
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < DOTS; i++) {
+                    for (let j = i + 1; j < DOTS; j++) {
+                        const dx = dots[i].x - dots[j].x;
+                        const dy = dots[i].y - dots[j].y;
+                        const d = Math.sqrt(dx*dx + dy*dy);
+                        if (d < MAX_DIST) {
+                            ctx.strokeStyle = `rgba(93,202,165,${(1 - d/MAX_DIST) * 0.3})`;
+                            ctx.lineWidth = 0.7;
+                            ctx.beginPath();
+                            ctx.moveTo(dots[i].x, dots[i].y);
+                            ctx.lineTo(dots[j].x, dots[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                    ctx.beginPath();
+                    ctx.arc(dots[i].x, dots[i].y, dots[i].r, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(93,202,165,0.65)';
+                    ctx.fill();
+                    dots[i].x += dots[i].vx;
+                    dots[i].y += dots[i].vy;
+                    if (dots[i].x < 0 || dots[i].x > canvas.width) dots[i].vx *= -1;
+                    if (dots[i].y < 0 || dots[i].y > canvas.height) dots[i].vy *= -1;
+                }
+                requestAnimationFrame(draw);
+            }
+            draw();
         }
-
-        draw();
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
+        initCanvas();
     })();
+    </script>
+    """, unsafe_allow_html=True)
+
+def render_floating_chatbot():
+    groq_key = ""
+    try:
+        groq_key = st.secrets.get("GROQ_API_KEY", "")
+    except:
+        pass
+
+    components.html(f"""
+    <style>
+    #chat-bubble {{
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #5DCAA5, #378ADD);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(93,202,165,0.4);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }}
+    #chat-bubble:hover {{
+        transform: scale(1.1);
+        box-shadow: 0 6px 28px rgba(93,202,165,0.6);
+    }}
+    #chat-bubble svg {{
+        width: 26px; height: 26px; fill: white;
+    }}
+    #chat-window {{
+        position: fixed;
+        bottom: 94px;
+        right: 28px;
+        width: 370px;
+        height: 520px;
+        background: #161B22;
+        border: 1px solid #30363D;
+        border-radius: 16px;
+        display: none;
+        flex-direction: column;
+        z-index: 9998;
+        overflow: hidden;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }}
+    #chat-window.open {{ display: flex; }}
+    #chat-header {{
+        padding: 14px 16px;
+        background: #0D1117;
+        border-bottom: 1px solid #21262D;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }}
+    #chat-header-left {{ display: flex; align-items: center; gap: 10px; }}
+    #chat-avatar {{
+        width: 32px; height: 32px; border-radius: 50%;
+        background: linear-gradient(135deg, #5DCAA5, #378ADD);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px;
+    }}
+    #chat-title {{ color: #E6EDF3; font-size: 14px; font-weight: 600; font-family: sans-serif; }}
+    #chat-subtitle {{ color: #7D8590; font-size: 11px; font-family: sans-serif; }}
+    #chat-close {{
+        color: #7D8590; cursor: pointer; font-size: 20px;
+        line-height: 1; padding: 2px 6px; border-radius: 4px;
+        font-family: sans-serif;
+    }}
+    #chat-close:hover {{ color: #E6EDF3; background: #21262D; }}
+    #chat-messages {{
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        scrollbar-width: thin;
+        scrollbar-color: #30363D transparent;
+    }}
+    .msg {{
+        max-width: 88%;
+        padding: 9px 13px;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        font-family: sans-serif;
+        word-wrap: break-word;
+    }}
+    .msg.user {{
+        background: #1F6FEB22;
+        border: 1px solid #1F6FEB44;
+        color: #E6EDF3;
+        align-self: flex-end;
+        border-bottom-right-radius: 4px;
+    }}
+    .msg.bot {{
+        background: #161B22;
+        border: 1px solid #30363D;
+        color: #C9D1D9;
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+    }}
+    .msg.bot.thinking {{
+        color: #7D8590;
+        font-style: italic;
+    }}
+    #chat-input-area {{
+        padding: 12px;
+        border-top: 1px solid #21262D;
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+        background: #0D1117;
+    }}
+    #chat-input {{
+        flex: 1;
+        background: #21262D;
+        border: 1px solid #30363D;
+        border-radius: 8px;
+        color: #E6EDF3;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-family: sans-serif;
+        outline: none;
+        resize: none;
+        height: 38px;
+    }}
+    #chat-input:focus {{ border-color: #5DCAA5; }}
+    #chat-input::placeholder {{ color: #7D8590; }}
+    #chat-send {{
+        width: 38px; height: 38px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #5DCAA5, #378ADD);
+        border: none;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        transition: opacity 0.2s;
+    }}
+    #chat-send:hover {{ opacity: 0.85; }}
+    #chat-send svg {{ width: 16px; height: 16px; fill: white; }}
+    .quick-btns {{
+        display: flex; flex-wrap: wrap; gap: 5px; padding: 0 14px 10px;
+    }}
+    .qbtn {{
+        font-size: 11px; padding: 4px 10px;
+        background: #21262D; border: 1px solid #30363D;
+        border-radius: 99px; color: #7D8590;
+        cursor: pointer; font-family: sans-serif;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }}
+    .qbtn:hover {{ background: #2D333B; color: #E6EDF3; border-color: #5DCAA5; }}
+    </style>
+
+    <div id="chat-bubble" onclick="toggleChat()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2zm0 16c-.97 0-1.9-.15-2.77-.43l-.44-.15-2.7 1.17.84-2.55-.32-.4C5.15 14.55 4 12.84 4 11c0-3.86 3.58-7 8-7s8 3.14 8 7-3.58 7-8 7z"/>
+        </svg>
+    </div>
+
+    <div id="chat-window">
+        <div id="chat-header">
+            <div id="chat-header-left">
+                <div id="chat-avatar">🧠</div>
+                <div>
+                    <div id="chat-title">ML Mentor</div>
+                    <div id="chat-subtitle">Roadmap-scoped · Groq llama-3.3-70b</div>
+                </div>
+            </div>
+            <div id="chat-close" onclick="toggleChat()">×</div>
+        </div>
+
+        <div id="chat-messages">
+            <div class="msg bot">Hey! I'm your ML roadmap mentor. Ask me about any concept, project, or resource from the dashboard 👋</div>
+        </div>
+
+        <div class="quick-btns" id="quick-btns">
+            <span class="qbtn" onclick="sendQuick('Explain LoRA mathematically')">LoRA math</span>
+            <span class="qbtn" onclick="sendQuick('What should I do in week 1?')">Week 1 plan</span>
+            <span class="qbtn" onclick="sendQuick('Walk me through the tabular-baseline project')">tabular-baseline</span>
+            <span class="qbtn" onclick="sendQuick('Explain KV cache and why it matters')">KV cache</span>
+            <span class="qbtn" onclick="sendQuick('Quiz me on transformer attention')">Quiz me</span>
+            <span class="qbtn" onclick="sendQuick('Difference between DDP and FSDP?')">DDP vs FSDP</span>
+        </div>
+
+        <div id="chat-input-area">
+            <textarea id="chat-input" placeholder="Ask your ML mentor..." rows="1"></textarea>
+            <button id="chat-send" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+    const GROQ_KEY = "{groq_key}";
+    const SYSTEM_PROMPT = `You are an AI mentor embedded inside a 6-month ML Engineer Roadmap dashboard. Your ONLY job is to help the user understand and complete this specific roadmap. Refuse any question not related to this roadmap with: "I'm your roadmap mentor — I can only help with topics in this 6-month ML roadmap!"
+
+You can help with: explaining any ML concept in the roadmap, guiding through the 6 projects, explaining resources, interview prep, and study planning.
+
+Roadmap covers: Math (linear algebra, calculus, probability), Python ML toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, clustering, PCA), Neural nets + PyTorch (backprop, optimizers, training loop), Deep Learning (CNNs, LSTMs, Transformers, ViT, Diffusion), Training at scale (mixed precision, DDP, FSDP, DeepSpeed), NLP + HuggingFace (tokenization, AutoModel, peft, trl), Fine-tuning (LoRA, QLoRA, SFT, DPO, GRPO), RAG (chunking, vector DBs, hybrid search, reranking, ragas), LLM internals (KV cache, Flash Attention, quantization, speculative decoding), Inference serving (vllm, continuous batching), MLOps (DVC, MLflow, drift detection, Evidently), Agents (LangGraph, MCP, tool calling, guardrails), Interview prep.
+
+Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals.
+
+Be concise (under 250 words unless asked for more), practical, encouraging. Use short code snippets when helpful.`;
+
+    let messages = [];
+    let isOpen = false;
+
+    function toggleChat() {{
+        isOpen = !isOpen;
+        document.getElementById('chat-window').classList.toggle('open', isOpen);
+        if (isOpen) document.getElementById('chat-input').focus();
+    }}
+
+    function sendQuick(text) {{
+        document.getElementById('chat-input').value = text;
+        sendMessage();
+    }}
+
+    function sendMessage() {{
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+
+        appendMsg(text, 'user');
+        messages.push({{role: 'user', content: text}});
+
+        document.getElementById('quick-btns').style.display = 'none';
+
+        const thinkingEl = appendMsg('Thinking...', 'bot thinking');
+
+        if (!GROQ_KEY) {{
+            thinkingEl.remove();
+            appendMsg('⚠️ No Groq API key found. Add GROQ_API_KEY to your Streamlit secrets.', 'bot');
+            return;
+        }}
+
+        fetch('https://api.groq.com/openai/v1/chat/completions', {{
+            method: 'POST',
+            headers: {{
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + GROQ_KEY
+            }},
+            body: JSON.stringify({{
+                model: 'llama-3.3-70b-versatile',
+                max_tokens: 600,
+                messages: [{{role: 'system', content: SYSTEM_PROMPT}}, ...messages]
+            }})
+        }})
+        .then(r => r.json())
+        .then(data => {{
+            thinkingEl.remove();
+            const reply = data.choices?.[0]?.message?.content || 'Sorry, something went wrong.';
+            appendMsg(reply, 'bot');
+            messages.push({{role: 'assistant', content: reply}});
+        }})
+        .catch(() => {{
+            thinkingEl.remove();
+            appendMsg('Network error. Check your connection.', 'bot');
+        }});
+    }}
+
+    function appendMsg(text, classes) {{
+        const el = document.createElement('div');
+        el.className = 'msg ' + classes;
+        el.textContent = text;
+        const container = document.getElementById('chat-messages');
+        container.appendChild(el);
+        container.scrollTop = container.scrollHeight;
+        return el;
+    }}
+
+    document.getElementById('chat-input').addEventListener('keydown', function(e) {{
+        if (e.key === 'Enter' && !e.shiftKey) {{
+            e.preventDefault();
+            sendMessage();
+        }}
+    }});
     </script>
     """, height=0)
 
 render_animated_background()
+render_floating_chatbot()
 
 # ── First-load toast ──────────────────────────────────────────────────────────
 if "welcomed" not in st.session_state:
@@ -1127,7 +1419,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "AI Mentor"],
+        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep"],
         label_visibility="collapsed",
     )
 
@@ -1428,80 +1720,3 @@ elif page == "Interview Prep":
     ]:
         st.markdown(f"⭐ &nbsp; {story}")
 
-elif page == "AI Mentor":
-    st.markdown("# AI Mentor — ask me anything")
-    st.caption("Powered by Groq (llama-3.3-70b). Roadmap-scoped mentor — ask about any concept, project, or resource.")
-
-    col_clear, _ = st.columns([1, 5])
-    with col_clear:
-        if st.button("Clear chat"):
-            st.session_state.messages = []
-            st.rerun()
-
-    if not st.session_state.messages:
-        st.markdown("**Try asking:**")
-        starter_qs = [
-            "Explain how LoRA works mathematically",
-            "Help me debug my PyTorch training loop — loss isn't decreasing",
-            "What should I focus on in week 1?",
-            "Walk me through the tabular-baseline project step by step",
-            "What's the difference between DDP and FSDP?",
-            "How do I know if my RAG pipeline has data leakage?",
-            "Quiz me on transformer attention",
-        ]
-        cols = st.columns(2)
-        for i, q in enumerate(starter_qs):
-            if cols[i % 2].button(q, key=f"starter_{i}"):
-                st.session_state.messages.append({"role": "user", "content": q})
-                st.rerun()
-
-    # Display existing messages
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    # Chat input
-    if prompt := st.chat_input("Ask your ML mentor anything..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Check for API key
-        api_key = None
-        try:
-            api_key = st.secrets.get("GROQ_API_KEY", None)
-        except Exception:
-            pass
-
-        if not api_key or api_key == "your-key-here":
-            st.warning(
-                "No API key found. Add `GROQ_API_KEY = 'gsk_...'` to `.streamlit/secrets.toml` to enable the AI Mentor.",
-                icon="⚠️",
-            )
-        else:
-            try:
-                from groq import Groq
-
-                client = Groq(api_key=api_key)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        response = client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            max_tokens=1024,
-                            messages=[{"role": "system", "content": SYSTEM_PROMPT}] +
-                                     [{"role": m["role"], "content": m["content"]}
-                                      for m in st.session_state.messages],
-                        )
-                        reply = response.choices[0].message.content
-                        st.markdown(reply)
-
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-
-            except ImportError:
-                st.error("The `groq` package is not installed. Run `pip install groq`.")
-            except Exception as e:
-                st.error(f"API error: {e}")
-
-    st.markdown("---")
-    st.caption("Add your free Groq API key to `.streamlit/secrets.toml` as `GROQ_API_KEY = 'gsk_...'` — Get a free key at console.groq.com — no credit card needed.")
