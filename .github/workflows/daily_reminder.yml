@@ -1,1 +1,19 @@
+name: Daily ML Roadmap Reminder
 
+on:
+  schedule:
+    # Runs at 20:00 IST = 15:30 UTC
+    - cron: '30 15 * * *'
+  workflow_dispatch:  # allows manual trigger
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send ntfy notification
+        run: |
+          curl -X POST https://ntfy.sh/ML-Engineer \
+            -H "Title: ML Roadmap - Daily Study Time!" \
+            -H "Priority: high" \
+            -H "Tags: brain,fire,rocket" \
+            -d "Time to grind. Open your roadmap and tick at least ONE topic today. Tier-1 is waiting. You got this."
