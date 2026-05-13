@@ -1124,20 +1124,20 @@ elif page == "AI Mentor":
         # Check for API key
         api_key = None
         try:
-            api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
+            api_key = st.secrets.get("GROQ_API_KEY", None)
         except Exception:
             pass
 
         if not api_key or api_key == "your-key-here":
             st.warning(
-                "No API key found. Add `ANTHROPIC_API_KEY = 'sk-...'` to `.streamlit/secrets.toml` to enable the AI Mentor.",
+                "No API key found. Add `GROQ_API_KEY = 'gsk_...'` to `.streamlit/secrets.toml` to enable the AI Mentor.",
                 icon="⚠️",
             )
         else:
             try:
-                import anthropic
+                from groq import Groq
 
-                client = anthropic.Anthropic(api_key=api_key)
+                client = Groq(api_key=api_key)
 
                 system_prompt = """You are an expert ML engineering mentor helping a student follow a 6-month roadmap to become a job-ready ML engineer at a tier-1 company.
 
@@ -1150,24 +1150,22 @@ Be concise, practical, and encouraging. When explaining concepts, use code examp
 
                 with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
-                        response = client.messages.create(
-                            model="claude-haiku-4-5-20251001",
+                        response = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
                             max_tokens=1024,
-                            system=system_prompt,
-                            messages=[
-                                {"role": m["role"], "content": m["content"]}
-                                for m in st.session_state.messages
-                            ],
+                            messages=[{"role": "system", "content": system_prompt}] +
+                                     [{"role": m["role"], "content": m["content"]}
+                                      for m in st.session_state.messages],
                         )
-                        reply = response.content[0].text
+                        reply = response.choices[0].message.content
                         st.markdown(reply)
 
                 st.session_state.messages.append({"role": "assistant", "content": reply})
 
             except ImportError:
-                st.error("The `anthropic` package is not installed. Run `pip install anthropic`.")
+                st.error("The `groq` package is not installed. Run `pip install groq`.")
             except Exception as e:
                 st.error(f"API error: {e}")
 
     st.markdown("---")
-    st.caption("Add your API key to `.streamlit/secrets.toml` as `ANTHROPIC_API_KEY = 'sk-...'`")
+    st.caption("Add your free Groq API key to `.streamlit/secrets.toml` as `GROQ_API_KEY = 'gsk_...'` — Get a free key at console.groq.com — no credit card needed.")
