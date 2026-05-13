@@ -12,84 +12,110 @@ st.set_page_config(
 )
 
 def render_animated_background():
+    # Dark base color via CSS only — no JS needed for background color
     st.markdown("""
     <style>
-    .stApp {
-        background: #0D1117 !important;
+    .stApp, section[data-testid="stAppViewContainer"] {
+        background-color: #0D1117 !important;
     }
-    #neural-canvas {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        z-index: 0;
-        pointer-events: none;
+    section[data-testid="stSidebar"] {
+        background-color: #010409 !important;
     }
     .main .block-container {
+        background: transparent !important;
         position: relative;
         z-index: 1;
     }
-    section[data-testid="stSidebar"] {
-        z-index: 2;
-        background: #0D1117 !important;
+    /* prevent layout shift from the two fixed iframes */
+    .element-container:has(iframe) {
+        height: 0 !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     </style>
-    <canvas id="neural-canvas"></canvas>
+    """, unsafe_allow_html=True)
+
+    # Animated canvas via components.html — needs real height, repositioned via CSS
+    components.html("""
+    <style>
+    * { margin: 0; padding: 0; }
+    body { background: transparent; overflow: hidden; }
+    canvas {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        display: block;
+        pointer-events: none;
+    }
+    </style>
+    <canvas id="c"></canvas>
     <script>
-    (function() {
-        function initCanvas() {
-            const canvas = document.getElementById('neural-canvas');
-            if (!canvas) { setTimeout(initCanvas, 200); return; }
-            const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
 
-            function resize() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-            resize();
-            window.addEventListener('resize', resize);
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
 
-            const DOTS = 70;
-            const MAX_DIST = 150;
-            const dots = Array.from({length: DOTS}, () => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                vx: (Math.random() - 0.5) * 0.45,
-                vy: (Math.random() - 0.5) * 0.45,
-                r: Math.random() * 2 + 1
-            }));
+    const N = 70, MAX = 150;
+    const dots = Array.from({length: N}, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        r: Math.random() * 2 + 1.2
+    }));
 
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                for (let i = 0; i < DOTS; i++) {
-                    for (let j = i + 1; j < DOTS; j++) {
-                        const dx = dots[i].x - dots[j].x;
-                        const dy = dots[i].y - dots[j].y;
-                        const d = Math.sqrt(dx*dx + dy*dy);
-                        if (d < MAX_DIST) {
-                            ctx.strokeStyle = `rgba(93,202,165,${(1 - d/MAX_DIST) * 0.3})`;
-                            ctx.lineWidth = 0.7;
-                            ctx.beginPath();
-                            ctx.moveTo(dots[i].x, dots[i].y);
-                            ctx.lineTo(dots[j].x, dots[j].y);
-                            ctx.stroke();
-                        }
-                    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < N; i++) {
+            for (let j = i+1; j < N; j++) {
+                const dx = dots[i].x - dots[j].x;
+                const dy = dots[i].y - dots[j].y;
+                const d = Math.sqrt(dx*dx + dy*dy);
+                if (d < MAX) {
+                    ctx.strokeStyle = `rgba(93,202,165,${(1 - d/MAX) * 0.28})`;
+                    ctx.lineWidth = 0.8;
                     ctx.beginPath();
-                    ctx.arc(dots[i].x, dots[i].y, dots[i].r, 0, Math.PI*2);
-                    ctx.fillStyle = 'rgba(93,202,165,0.65)';
-                    ctx.fill();
-                    dots[i].x += dots[i].vx;
-                    dots[i].y += dots[i].vy;
-                    if (dots[i].x < 0 || dots[i].x > canvas.width) dots[i].vx *= -1;
-                    if (dots[i].y < 0 || dots[i].y > canvas.height) dots[i].vy *= -1;
+                    ctx.moveTo(dots[i].x, dots[i].y);
+                    ctx.lineTo(dots[j].x, dots[j].y);
+                    ctx.stroke();
                 }
-                requestAnimationFrame(draw);
             }
-            draw();
+            ctx.beginPath();
+            ctx.arc(dots[i].x, dots[i].y, dots[i].r, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(93,202,165,0.7)';
+            ctx.fill();
+            dots[i].x += dots[i].vx;
+            dots[i].y += dots[i].vy;
+            if (dots[i].x < 0 || dots[i].x > canvas.width) dots[i].vx *= -1;
+            if (dots[i].y < 0 || dots[i].y > canvas.height) dots[i].vy *= -1;
         }
-        initCanvas();
-    })();
+        requestAnimationFrame(draw);
+    }
+    draw();
     </script>
+    """, height=220, scrolling=False)
+
+    # Pull the iframe UP so it sits behind content, not pushing content down
+    st.markdown("""
+    <style>
+    iframe[title="st.iframe"] {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 0 !important;
+        pointer-events: none !important;
+        border: none !important;
+        margin-top: -220px;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
 def render_floating_chatbot():
@@ -101,282 +127,215 @@ def render_floating_chatbot():
 
     components.html(f"""
     <style>
-    #chat-bubble {{
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{ background: transparent; overflow: hidden; font-family: -apple-system, sans-serif; }}
+
+    #bubble {{
         position: fixed;
-        bottom: 28px;
-        right: 28px;
-        width: 54px;
-        height: 54px;
+        bottom: 24px; right: 24px;
+        width: 52px; height: 52px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #5DCAA5, #378ADD);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        background: linear-gradient(135deg, #5DCAA5 0%, #378ADD 100%);
+        display: flex; align-items: center; justify-content: center;
         cursor: pointer;
-        z-index: 9999;
-        box-shadow: 0 4px 20px rgba(93,202,165,0.4);
-        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 4px 24px rgba(93,202,165,0.45);
+        transition: transform .2s, box-shadow .2s;
+        z-index: 999;
     }}
-    #chat-bubble:hover {{
-        transform: scale(1.1);
-        box-shadow: 0 6px 28px rgba(93,202,165,0.6);
-    }}
-    #chat-bubble svg {{
-        width: 26px; height: 26px; fill: white;
-    }}
-    #chat-window {{
+    #bubble:hover {{ transform: scale(1.1); box-shadow: 0 6px 32px rgba(93,202,165,0.65); }}
+    #bubble svg {{ width: 24px; height: 24px; fill: white; }}
+
+    #win {{
         position: fixed;
-        bottom: 94px;
-        right: 28px;
-        width: 370px;
-        height: 520px;
+        bottom: 86px; right: 24px;
+        width: 340px; height: 480px;
         background: #161B22;
         border: 1px solid #30363D;
-        border-radius: 16px;
-        display: none;
-        flex-direction: column;
-        z-index: 9998;
+        border-radius: 14px;
+        display: none; flex-direction: column;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+        z-index: 998;
         overflow: hidden;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.5);
     }}
-    #chat-window.open {{ display: flex; }}
-    #chat-header {{
-        padding: 14px 16px;
+    #win.open {{ display: flex; }}
+
+    #hdr {{
+        padding: 12px 14px;
         background: #0D1117;
         border-bottom: 1px solid #21262D;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        display: flex; align-items: center; justify-content: space-between;
         flex-shrink: 0;
     }}
-    #chat-header-left {{ display: flex; align-items: center; gap: 10px; }}
-    #chat-avatar {{
-        width: 32px; height: 32px; border-radius: 50%;
+    .hdr-l {{ display: flex; align-items: center; gap: 9px; }}
+    .av {{
+        width: 30px; height: 30px; border-radius: 50%;
         background: linear-gradient(135deg, #5DCAA5, #378ADD);
         display: flex; align-items: center; justify-content: center;
-        font-size: 15px;
+        font-size: 14px;
     }}
-    #chat-title {{ color: #E6EDF3; font-size: 14px; font-weight: 600; font-family: sans-serif; }}
-    #chat-subtitle {{ color: #7D8590; font-size: 11px; font-family: sans-serif; }}
-    #chat-close {{
-        color: #7D8590; cursor: pointer; font-size: 20px;
-        line-height: 1; padding: 2px 6px; border-radius: 4px;
-        font-family: sans-serif;
+    .ttl {{ color: #E6EDF3; font-size: 13px; font-weight: 600; }}
+    .sub {{ color: #7D8590; font-size: 10px; }}
+    .cls {{ color: #7D8590; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; }}
+    .cls:hover {{ color: #E6EDF3; background: #21262D; }}
+
+    #msgs {{
+        flex: 1; overflow-y: auto; padding: 12px;
+        display: flex; flex-direction: column; gap: 8px;
+        scrollbar-width: thin; scrollbar-color: #30363D transparent;
     }}
-    #chat-close:hover {{ color: #E6EDF3; background: #21262D; }}
-    #chat-messages {{
-        flex: 1;
-        overflow-y: auto;
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        scrollbar-width: thin;
-        scrollbar-color: #30363D transparent;
+    .m {{
+        max-width: 86%; padding: 8px 12px; border-radius: 10px;
+        font-size: 12.5px; line-height: 1.5; word-wrap: break-word;
     }}
-    .msg {{
-        max-width: 88%;
-        padding: 9px 13px;
-        border-radius: 12px;
-        font-size: 13px;
-        line-height: 1.5;
-        font-family: sans-serif;
-        word-wrap: break-word;
+    .m.u {{
+        background: #1F6FEB22; border: 1px solid #1F6FEB44;
+        color: #E6EDF3; align-self: flex-end; border-bottom-right-radius: 3px;
     }}
-    .msg.user {{
-        background: #1F6FEB22;
-        border: 1px solid #1F6FEB44;
-        color: #E6EDF3;
-        align-self: flex-end;
-        border-bottom-right-radius: 4px;
-    }}
-    .msg.bot {{
-        background: #161B22;
-        border: 1px solid #30363D;
-        color: #C9D1D9;
-        align-self: flex-start;
-        border-bottom-left-radius: 4px;
-    }}
-    .msg.bot.thinking {{
-        color: #7D8590;
-        font-style: italic;
-    }}
-    #chat-input-area {{
-        padding: 12px;
-        border-top: 1px solid #21262D;
-        display: flex;
-        gap: 8px;
-        flex-shrink: 0;
-        background: #0D1117;
-    }}
-    #chat-input {{
-        flex: 1;
-        background: #21262D;
-        border: 1px solid #30363D;
-        border-radius: 8px;
-        color: #E6EDF3;
-        padding: 8px 12px;
-        font-size: 13px;
-        font-family: sans-serif;
-        outline: none;
-        resize: none;
-        height: 38px;
-    }}
-    #chat-input:focus {{ border-color: #5DCAA5; }}
-    #chat-input::placeholder {{ color: #7D8590; }}
-    #chat-send {{
-        width: 38px; height: 38px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #5DCAA5, #378ADD);
-        border: none;
-        cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0;
-        transition: opacity 0.2s;
-    }}
-    #chat-send:hover {{ opacity: 0.85; }}
-    #chat-send svg {{ width: 16px; height: 16px; fill: white; }}
-    .quick-btns {{
-        display: flex; flex-wrap: wrap; gap: 5px; padding: 0 14px 10px;
-    }}
-    .qbtn {{
-        font-size: 11px; padding: 4px 10px;
+    .m.b {{
         background: #21262D; border: 1px solid #30363D;
-        border-radius: 99px; color: #7D8590;
-        cursor: pointer; font-family: sans-serif;
-        transition: all 0.15s;
-        white-space: nowrap;
+        color: #C9D1D9; align-self: flex-start; border-bottom-left-radius: 3px;
     }}
-    .qbtn:hover {{ background: #2D333B; color: #E6EDF3; border-color: #5DCAA5; }}
+    .m.t {{ color: #7D8590; font-style: italic; }}
+
+    .qw {{ display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 8px; flex-shrink: 0; }}
+    .qb {{
+        font-size: 10.5px; padding: 3px 9px;
+        background: #21262D; border: 1px solid #30363D;
+        border-radius: 99px; color: #8B949E; cursor: pointer;
+        transition: all .15s; white-space: nowrap;
+    }}
+    .qb:hover {{ background: #2D333B; color: #E6EDF3; border-color: #5DCAA5; }}
+
+    #inp-area {{
+        padding: 10px 12px; border-top: 1px solid #21262D;
+        display: flex; gap: 7px; flex-shrink: 0; background: #0D1117;
+    }}
+    #inp {{
+        flex: 1; background: #21262D; border: 1px solid #30363D;
+        border-radius: 7px; color: #E6EDF3; padding: 7px 11px;
+        font-size: 12px; outline: none; resize: none; height: 36px;
+    }}
+    #inp:focus {{ border-color: #5DCAA5; }}
+    #inp::placeholder {{ color: #7D8590; }}
+    #snd {{
+        width: 36px; height: 36px; border-radius: 7px;
+        background: linear-gradient(135deg, #5DCAA5, #378ADD);
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }}
+    #snd:hover {{ opacity: 0.85; }}
+    #snd svg {{ width: 15px; height: 15px; fill: white; }}
     </style>
 
-    <div id="chat-bubble" onclick="toggleChat()">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2zm0 16c-.97 0-1.9-.15-2.77-.43l-.44-.15-2.7 1.17.84-2.55-.32-.4C5.15 14.55 4 12.84 4 11c0-3.86 3.58-7 8-7s8 3.14 8 7-3.58 7-8 7z"/>
-        </svg>
+    <div id="bubble" onclick="toggle()">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
     </div>
 
-    <div id="chat-window">
-        <div id="chat-header">
-            <div id="chat-header-left">
-                <div id="chat-avatar">🧠</div>
-                <div>
-                    <div id="chat-title">ML Mentor</div>
-                    <div id="chat-subtitle">Roadmap-scoped · Groq llama-3.3-70b</div>
-                </div>
+    <div id="win">
+        <div id="hdr">
+            <div class="hdr-l">
+                <div class="av">🧠</div>
+                <div><div class="ttl">ML Mentor</div><div class="sub">Roadmap-scoped · llama-3.3-70b</div></div>
             </div>
-            <div id="chat-close" onclick="toggleChat()">×</div>
+            <div class="cls" onclick="toggle()">×</div>
         </div>
-
-        <div id="chat-messages">
-            <div class="msg bot">Hey! I'm your ML roadmap mentor. Ask me about any concept, project, or resource from the dashboard 👋</div>
+        <div id="msgs">
+            <div class="m b">Hey! Ask me about any concept, project, or resource in the roadmap 👋</div>
         </div>
-
-        <div class="quick-btns" id="quick-btns">
-            <span class="qbtn" onclick="sendQuick('Explain LoRA mathematically')">LoRA math</span>
-            <span class="qbtn" onclick="sendQuick('What should I do in week 1?')">Week 1 plan</span>
-            <span class="qbtn" onclick="sendQuick('Walk me through the tabular-baseline project')">tabular-baseline</span>
-            <span class="qbtn" onclick="sendQuick('Explain KV cache and why it matters')">KV cache</span>
-            <span class="qbtn" onclick="sendQuick('Quiz me on transformer attention')">Quiz me</span>
-            <span class="qbtn" onclick="sendQuick('Difference between DDP and FSDP?')">DDP vs FSDP</span>
+        <div class="qw" id="qw">
+            <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
+            <span class="qb" onclick="sq('What to do in week 1?')">Week 1</span>
+            <span class="qb" onclick="sq('Walk me through tabular-baseline')">tabular-baseline</span>
+            <span class="qb" onclick="sq('Explain KV cache')">KV cache</span>
+            <span class="qb" onclick="sq('Quiz me on attention')">Quiz me</span>
         </div>
-
-        <div id="chat-input-area">
-            <textarea id="chat-input" placeholder="Ask your ML mentor..." rows="1"></textarea>
-            <button id="chat-send" onclick="sendMessage()">
+        <div id="inp-area">
+            <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
+            <button id="snd" onclick="send()">
                 <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
             </button>
         </div>
     </div>
 
     <script>
-    const GROQ_KEY = "{groq_key}";
-    const SYSTEM_PROMPT = `You are an AI mentor embedded inside a 6-month ML Engineer Roadmap dashboard. Your ONLY job is to help the user understand and complete this specific roadmap. Refuse any question not related to this roadmap with: "I'm your roadmap mentor — I can only help with topics in this 6-month ML roadmap!"
+    const KEY = "{groq_key}";
+    const SYS = `You are an ML roadmap mentor. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it with: "I'm your roadmap mentor — ask me about the ML roadmap topics only!"
 
-You can help with: explaining any ML concept in the roadmap, guiding through the 6 projects, explaining resources, interview prep, and study planning.
+Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, LightGBM, clustering, PCA), Neural nets + PyTorch (backprop, optimizers, training loop, DataLoader, checkpoints), Deep Learning (CNNs ResNet EfficientNet, LSTMs, Transformers self-attention multi-head RoPE ALiBi, ViT, Diffusion DDPM), Training at scale (mixed precision bf16 fp16, DDP FSDP DeepSpeed ZeRO, Accelerate), NLP + HuggingFace (BPE tokenization, AutoModel AutoTokenizer, peft LoRA QLoRA, trl SFT DPO GRPO), RAG (chunking, qdrant vector DB, hybrid BM25+dense, reranking, ragas eval), LLM internals (Flash Attention, KV cache, quantization GPTQ AWQ GGUF, speculative decoding), vllm serving, MLOps (DVC mlflow drift Evidently Langfuse), Agents (LangGraph MCP tool-calling guardrails). Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise (under 250 words), practical, use short code examples.`;
 
-Roadmap covers: Math (linear algebra, calculus, probability), Python ML toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, clustering, PCA), Neural nets + PyTorch (backprop, optimizers, training loop), Deep Learning (CNNs, LSTMs, Transformers, ViT, Diffusion), Training at scale (mixed precision, DDP, FSDP, DeepSpeed), NLP + HuggingFace (tokenization, AutoModel, peft, trl), Fine-tuning (LoRA, QLoRA, SFT, DPO, GRPO), RAG (chunking, vector DBs, hybrid search, reranking, ragas), LLM internals (KV cache, Flash Attention, quantization, speculative decoding), Inference serving (vllm, continuous batching), MLOps (DVC, MLflow, drift detection, Evidently), Agents (LangGraph, MCP, tool calling, guardrails), Interview prep.
+    let msgs = [];
+    let open = false;
 
-Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals.
-
-Be concise (under 250 words unless asked for more), practical, encouraging. Use short code snippets when helpful.`;
-
-    let messages = [];
-    let isOpen = false;
-
-    function toggleChat() {{
-        isOpen = !isOpen;
-        document.getElementById('chat-window').classList.toggle('open', isOpen);
-        if (isOpen) document.getElementById('chat-input').focus();
+    function toggle() {{
+        open = !open;
+        document.getElementById('win').classList.toggle('open', open);
+        if (open) document.getElementById('inp').focus();
     }}
 
-    function sendQuick(text) {{
-        document.getElementById('chat-input').value = text;
-        sendMessage();
-    }}
+    function sq(t) {{ document.getElementById('inp').value = t; send(); }}
 
-    function sendMessage() {{
-        const input = document.getElementById('chat-input');
-        const text = input.value.trim();
-        if (!text) return;
-        input.value = '';
-
-        appendMsg(text, 'user');
-        messages.push({{role: 'user', content: text}});
-
-        document.getElementById('quick-btns').style.display = 'none';
-
-        const thinkingEl = appendMsg('Thinking...', 'bot thinking');
-
-        if (!GROQ_KEY) {{
-            thinkingEl.remove();
-            appendMsg('⚠️ No Groq API key found. Add GROQ_API_KEY to your Streamlit secrets.', 'bot');
-            return;
-        }}
-
+    function send() {{
+        const inp = document.getElementById('inp');
+        const txt = inp.value.trim();
+        if (!txt) return;
+        inp.value = '';
+        add(txt, 'u');
+        msgs.push({{role:'user', content:txt}});
+        document.getElementById('qw').style.display = 'none';
+        const th = add('Thinking...', 'b t');
+        if (!KEY) {{ th.remove(); add('⚠️ No GROQ_API_KEY in Streamlit secrets.', 'b'); return; }}
         fetch('https://api.groq.com/openai/v1/chat/completions', {{
-            method: 'POST',
-            headers: {{
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + GROQ_KEY
-            }},
-            body: JSON.stringify({{
-                model: 'llama-3.3-70b-versatile',
-                max_tokens: 600,
-                messages: [{{role: 'system', content: SYSTEM_PROMPT}}, ...messages]
-            }})
+            method:'POST',
+            headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
+            body:JSON.stringify({{model:'llama-3.3-70b-versatile', max_tokens:500,
+                messages:[{{role:'system',content:SYS}},...msgs]}})
         }})
-        .then(r => r.json())
-        .then(data => {{
-            thinkingEl.remove();
-            const reply = data.choices?.[0]?.message?.content || 'Sorry, something went wrong.';
-            appendMsg(reply, 'bot');
-            messages.push({{role: 'assistant', content: reply}});
+        .then(r=>r.json())
+        .then(d=>{{
+            th.remove();
+            const rep = d.choices?.[0]?.message?.content || 'Sorry, something went wrong.';
+            add(rep,'b');
+            msgs.push({{role:'assistant',content:rep}});
         }})
-        .catch(() => {{
-            thinkingEl.remove();
-            appendMsg('Network error. Check your connection.', 'bot');
-        }});
+        .catch(()=>{{ th.remove(); add('Network error.','b'); }});
     }}
 
-    function appendMsg(text, classes) {{
+    function add(txt, cls) {{
         const el = document.createElement('div');
-        el.className = 'msg ' + classes;
-        el.textContent = text;
-        const container = document.getElementById('chat-messages');
-        container.appendChild(el);
-        container.scrollTop = container.scrollHeight;
+        el.className = 'm '+cls;
+        el.textContent = txt;
+        const c = document.getElementById('msgs');
+        c.appendChild(el);
+        c.scrollTop = c.scrollHeight;
         return el;
     }}
 
-    document.getElementById('chat-input').addEventListener('keydown', function(e) {{
-        if (e.key === 'Enter' && !e.shiftKey) {{
-            e.preventDefault();
-            sendMessage();
-        }}
+    document.getElementById('inp').addEventListener('keydown', e=>{{
+        if (e.key==='Enter' && !e.shiftKey) {{ e.preventDefault(); send(); }}
     }});
     </script>
-    """, height=0)
+    """, height=560, scrolling=False)
+
+    # Reposition the iframe to bottom-right corner, out of document flow
+    st.markdown("""
+    <style>
+    section[data-testid="stMain"] iframe:last-of-type,
+    .element-container:last-child iframe {
+        position: fixed !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        left: auto !important;
+        width: 420px !important;
+        height: 580px !important;
+        z-index: 9999 !important;
+        border: none !important;
+        background: transparent !important;
+        margin: 0 !important;
+        pointer-events: all !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 render_animated_background()
 render_floating_chatbot()
