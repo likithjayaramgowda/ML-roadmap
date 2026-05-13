@@ -228,25 +228,63 @@ draw();
 </script>
 </body>
 </html>
-    """, height=220, scrolling=False)
+    """, height=1, scrolling=False)
 
     st.markdown("""
-    <style>
-    section[data-testid="stMain"] .block-container > div > div:nth-child(1) {
-        height: 0 !important; overflow: visible !important;
-        margin: 0 !important; padding: 0 !important;
-    }
-    section[data-testid="stMain"] .block-container > div > div:nth-child(1) iframe {
-        position: fixed !important;
-        top: 0 !important; left: 0 !important;
-        width: 100vw !important; height: 100vh !important;
-        z-index: 0 !important;
-        border: none !important;
-        pointer-events: none !important;
-        margin: 0 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+iframe {
+    border: none !important;
+}
+
+div[data-testid="stIFrame"]:first-of-type iframe,
+div.stHtml iframe:first-of-type,
+[data-testid="stMain"] iframe:first-of-type {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+
+div[data-testid="stIFrame"]:first-of-type,
+div.stHtml:first-of-type {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+.main .block-container {
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+}
+
+section[data-testid="stSidebar"] {
+    z-index: 10 !important;
+    background: rgba(2, 8, 16, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+header[data-testid="stHeader"] {
+    z-index: 10 !important;
+    background: rgba(2, 8, 16, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+}
+
+.stApp {
+    background: #020810 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 def render_floating_chatbot():
     groq_key = ""
@@ -444,28 +482,38 @@ Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (nump
         if (e.key==='Enter' && !e.shiftKey) {{ e.preventDefault(); send(); }}
     }});
     </script>
-    """, height=560, scrolling=False)
+    """, height=1, scrolling=False)
 
-    # Reposition the iframe to bottom-right corner, out of document flow
     st.markdown("""
-    <style>
-    section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
-        height: 0 !important; overflow: visible !important;
-        margin: 0 !important; padding: 0 !important;
-    }
-    section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
-        position: fixed !important;
-        bottom: 0 !important; right: 0 !important;
-        top: auto !important; left: auto !important;
-        width: 420px !important; height: 600px !important;
-        z-index: 9999 !important;
-        border: none !important;
-        background: transparent !important;
-        margin: 0 !important;
-        pointer-events: all !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+div[data-testid="stIFrame"]:nth-of-type(2) iframe,
+div.stHtml:nth-of-type(2) iframe,
+[data-testid="stMain"] iframe:nth-of-type(2) {
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    left: auto !important;
+    width: 420px !important;
+    height: 600px !important;
+    z-index: 9999 !important;
+    pointer-events: all !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    max-width: none !important;
+}
+
+div[data-testid="stIFrame"]:nth-of-type(2),
+div.stHtml:nth-of-type(2) {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 render_animated_background()
 render_floating_chatbot()
