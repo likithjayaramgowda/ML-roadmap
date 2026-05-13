@@ -12,108 +12,238 @@ st.set_page_config(
 )
 
 def render_animated_background():
-    # Dark base color via CSS only — no JS needed for background color
     st.markdown("""
     <style>
-    .stApp, section[data-testid="stAppViewContainer"] {
-        background-color: #0D1117 !important;
-    }
-    section[data-testid="stSidebar"] {
-        background-color: #010409 !important;
-    }
-    .main .block-container {
-        background: transparent !important;
-        position: relative;
-        z-index: 1;
-    }
-    /* prevent layout shift from the two fixed iframes */
-    .element-container:has(iframe) {
-        height: 0 !important;
-        overflow: visible !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
+    .stApp { background: #020810 !important; }
+    section[data-testid="stSidebar"] { background: #020810 !important; border-right: 1px solid #0d2137 !important; }
+    .main .block-container { position: relative; z-index: 1; }
+    header[data-testid="stHeader"] { background: transparent !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # Animated canvas via components.html — needs real height, repositioned via CSS
     components.html("""
-    <style>
-    * { margin: 0; padding: 0; }
-    body { background: transparent; overflow: hidden; }
-    canvas {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100vw; height: 100vh;
-        display: block;
-        pointer-events: none;
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin:0; padding:0; }
+html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
+canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const COLORS = {
+    bg: '#020810',
+    nodeCore: '#5DCAA5',
+    nodeGlow: 'rgba(93,202,165,',
+    edgePrimary: 'rgba(55,138,221,',
+    edgeSecondary: 'rgba(93,202,165,',
+    particle: 'rgba(127,119,221,',
+    pulse: 'rgba(93,202,165,',
+    hub: '#378ADD',
+    hubGlow: 'rgba(55,138,221,'
+};
+
+const NODE_COUNT = 55;
+const HUB_COUNT = 6;
+
+class Node {
+    constructor(isHub = false) {
+        this.x = Math.random() * W;
+        this.y = Math.random() * H;
+        this.vx = (Math.random() - 0.5) * (isHub ? 0.2 : 0.38);
+        this.vy = (Math.random() - 0.5) * (isHub ? 0.2 : 0.38);
+        this.isHub = isHub;
+        this.r = isHub ? Math.random() * 4 + 5 : Math.random() * 2 + 1.5;
+        this.baseR = this.r;
+        this.phase = Math.random() * Math.PI * 2;
+        this.speed = Math.random() * 0.02 + 0.008;
+        this.pulseAmp = isHub ? 3 : 1.2;
+        this.alpha = Math.random() * 0.4 + 0.6;
     }
-    </style>
-    <canvas id="c"></canvas>
-    <script>
-    const canvas = document.getElementById('c');
-    const ctx = canvas.getContext('2d');
-
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    update(t) {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < -50) this.x = W + 50;
+        if (this.x > W + 50) this.x = -50;
+        if (this.y < -50) this.y = H + 50;
+        if (this.y > H + 50) this.y = -50;
+        this.r = this.baseR + Math.sin(t * this.speed + this.phase) * this.pulseAmp;
     }
-    resize();
-    window.addEventListener('resize', resize);
+    draw(ctx) {
+        const glowSize = this.r * (this.isHub ? 5 : 3.5);
+        const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowSize);
+        const col = this.isHub ? COLORS.hubGlow : COLORS.nodeGlow;
+        grad.addColorStop(0, col + (this.isHub ? '0.35)' : '0.25)'));
+        grad.addColorStop(0.4, col + '0.08)');
+        grad.addColorStop(1, col + '0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+        ctx.fill();
 
-    const N = 70, MAX = 150;
-    const dots = Array.from({length: N}, () => ({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        r: Math.random() * 2 + 1.2
-    }));
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = this.isHub ? COLORS.hub : COLORS.nodeCore;
+        ctx.globalAlpha = this.alpha;
+        ctx.fill();
+        ctx.globalAlpha = 1;
 
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < N; i++) {
-            for (let j = i+1; j < N; j++) {
-                const dx = dots[i].x - dots[j].x;
-                const dy = dots[i].y - dots[j].y;
-                const d = Math.sqrt(dx*dx + dy*dy);
-                if (d < MAX) {
-                    ctx.strokeStyle = `rgba(93,202,165,${(1 - d/MAX) * 0.28})`;
-                    ctx.lineWidth = 0.8;
-                    ctx.beginPath();
-                    ctx.moveTo(dots[i].x, dots[i].y);
-                    ctx.lineTo(dots[j].x, dots[j].y);
-                    ctx.stroke();
-                }
-            }
+        if (this.isHub) {
             ctx.beginPath();
-            ctx.arc(dots[i].x, dots[i].y, dots[i].r, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(93,202,165,0.7)';
+            ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(200,240,255,0.6)';
             ctx.fill();
-            dots[i].x += dots[i].vx;
-            dots[i].y += dots[i].vy;
-            if (dots[i].x < 0 || dots[i].x > canvas.width) dots[i].vx *= -1;
-            if (dots[i].y < 0 || dots[i].y > canvas.height) dots[i].vy *= -1;
         }
-        requestAnimationFrame(draw);
     }
-    draw();
-    </script>
+}
+
+class Particle {
+    constructor(from, to) {
+        this.from = from;
+        this.to = to;
+        this.t = Math.random();
+        this.speed = Math.random() * 0.004 + 0.002;
+        this.size = Math.random() * 2 + 1;
+        this.alpha = Math.random() * 0.7 + 0.3;
+        this.color = Math.random() > 0.5 ? COLORS.particle : COLORS.edgePrimary;
+    }
+    update() { this.t += this.speed; if (this.t > 1) this.t = 0; }
+    draw(ctx) {
+        const x = this.from.x + (this.to.x - this.from.x) * this.t;
+        const y = this.from.y + (this.to.y - this.from.y) * this.t;
+        ctx.beginPath();
+        ctx.arc(x, y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color + this.alpha + ')';
+        ctx.fill();
+    }
+}
+
+class PulseRing {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.r = 0;
+        this.maxR = Math.random() * 80 + 60;
+        this.speed = Math.random() * 0.8 + 0.4;
+        this.alpha = 0.5;
+        this.done = false;
+    }
+    update() {
+        this.r += this.speed;
+        this.alpha = 0.5 * (1 - this.r / this.maxR);
+        if (this.r >= this.maxR) this.done = true;
+    }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.strokeStyle = COLORS.pulse + this.alpha + ')';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+}
+
+const nodes = [];
+for (let i = 0; i < HUB_COUNT; i++) nodes.push(new Node(true));
+for (let i = 0; i < NODE_COUNT - HUB_COUNT; i++) nodes.push(new Node(false));
+
+const MAX_DIST = 180;
+const MAX_HUB_DIST = 280;
+const particles = [];
+const pulseRings = [];
+
+function refreshParticles() {
+    particles.length = 0;
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            const ni = nodes[i], nj = nodes[j];
+            const dx = ni.x - nj.x, dy = ni.y - nj.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            const maxD = (ni.isHub || nj.isHub) ? MAX_HUB_DIST : MAX_DIST;
+            if (d < maxD && (ni.isHub || nj.isHub)) {
+                if (Math.random() > 0.4) particles.push(new Particle(ni, nj));
+            }
+        }
+    }
+}
+refreshParticles();
+setInterval(refreshParticles, 4000);
+
+setInterval(() => {
+    const hub = nodes[Math.floor(Math.random() * HUB_COUNT)];
+    pulseRings.push(new PulseRing(hub.x, hub.y));
+}, 1200);
+
+let frame = 0;
+function draw() {
+    frame++;
+    ctx.fillStyle = 'rgba(2,8,16,0.18)';
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = pulseRings.length - 1; i >= 0; i--) {
+        pulseRings[i].update();
+        pulseRings[i].draw(ctx);
+        if (pulseRings[i].done) pulseRings.splice(i, 1);
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            const ni = nodes[i], nj = nodes[j];
+            const dx = ni.x - nj.x, dy = ni.y - nj.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            const maxD = (ni.isHub || nj.isHub) ? MAX_HUB_DIST : MAX_DIST;
+            if (d < maxD) {
+                const alpha = (1 - d / maxD) * (ni.isHub || nj.isHub ? 0.55 : 0.22);
+                const isHubEdge = ni.isHub || nj.isHub;
+                ctx.strokeStyle = (isHubEdge ? COLORS.edgePrimary : COLORS.edgeSecondary) + alpha + ')';
+                ctx.lineWidth = isHubEdge ? 1.2 : 0.6;
+                ctx.beginPath();
+                ctx.moveTo(ni.x, ni.y);
+                ctx.lineTo(nj.x, nj.y);
+                ctx.stroke();
+            }
+        }
+    }
+
+    particles.forEach(p => { p.update(); p.draw(ctx); });
+
+    nodes.sort((a,b) => a.isHub - b.isHub);
+    nodes.forEach(n => { n.update(frame); n.draw(ctx); });
+
+    requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
     """, height=220, scrolling=False)
 
-    # Pull the iframe UP so it sits behind content, not pushing content down
     st.markdown("""
     <style>
-    iframe[title="st.iframe"] {
+    section[data-testid="stMain"] .block-container > div > div:nth-child(1) {
+        height: 0 !important; overflow: visible !important;
+        margin: 0 !important; padding: 0 !important;
+    }
+    section[data-testid="stMain"] .block-container > div > div:nth-child(1) iframe {
         position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
+        top: 0 !important; left: 0 !important;
+        width: 100vw !important; height: 100vh !important;
         z-index: 0 !important;
-        pointer-events: none !important;
         border: none !important;
-        margin-top: -220px;
+        pointer-events: none !important;
+        margin: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -319,15 +449,15 @@ Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (nump
     # Reposition the iframe to bottom-right corner, out of document flow
     st.markdown("""
     <style>
-    section[data-testid="stMain"] iframe:last-of-type,
-    .element-container:last-child iframe {
+    section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
+        height: 0 !important; overflow: visible !important;
+        margin: 0 !important; padding: 0 !important;
+    }
+    section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
         position: fixed !important;
-        bottom: 0 !important;
-        right: 0 !important;
-        top: auto !important;
-        left: auto !important;
-        width: 420px !important;
-        height: 580px !important;
+        bottom: 0 !important; right: 0 !important;
+        top: auto !important; left: auto !important;
+        width: 420px !important; height: 600px !important;
         z-index: 9999 !important;
         border: none !important;
         background: transparent !important;
@@ -339,6 +469,25 @@ Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (nump
 
 render_animated_background()
 render_floating_chatbot()
+
+# Collapse containers holding both iframes so they take zero layout space
+st.markdown("""
+<style>
+section[data-testid="stMain"] .block-container > div > div:nth-child(1),
+section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+section[data-testid="stMain"] .block-container > div > div:nth-child(1) iframe,
+section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ── First-load toast ──────────────────────────────────────────────────────────
 if "welcomed" not in st.session_state:
