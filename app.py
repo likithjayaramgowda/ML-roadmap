@@ -3,6 +3,27 @@ import streamlit.components.v1 as components
 import json
 import random
 import datetime
+import requests
+import time as time_module
+
+
+def send_ntfy(topic: str, title: str, message: str, tags: list = None, priority: str = "default") -> bool:
+    """Send a push notification via ntfy.sh — completely free, no auth needed."""
+    try:
+        headers = {
+            "Title": title,
+            "Priority": priority,
+            "Tags": ",".join(tags) if tags else "bell",
+        }
+        response = requests.post(
+            f"https://ntfy.sh/{topic}",
+            data=message.encode("utf-8"),
+            headers=headers,
+            timeout=10
+        )
+        return response.status_code == 200
+    except Exception:
+        return False
 
 st.set_page_config(
     page_title="ML Engineer Roadmap — 6 Months to Tier-1",
@@ -1575,7 +1596,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep"],
+        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "Notifications"],
         label_visibility="collapsed",
     )
 
@@ -1875,4 +1896,127 @@ elif page == "Interview Prep":
         "A cross-functional data/model/infra decision you drove",
     ]:
         st.markdown(f"⭐ &nbsp; {story}")
+
+elif page == "Notifications":
+    st.markdown("# Notifications")
+    st.caption("Free push notifications via ntfy.sh — no account needed.")
+
+    st.markdown("### Step 1 — Install the app on your phone")
+    col1, col2 = st.columns(2)
+    col1.markdown("""
+**Android:** [Play Store — ntfy](https://play.google.com/store/apps/details?id=io.heckel.ntfy)
+**iOS:** [App Store — ntfy](https://apps.apple.com/us/app/ntfy/id1625396347)
+    """)
+    col2.info("Free, open source, no account needed.")
+
+    st.markdown("### Step 2 — Choose your unique topic name")
+    st.caption("Make it long and personal so nobody else guesses it. This is your private notification channel.")
+
+    topic = st.text_input(
+        "Your topic name",
+        value=st.session_state.get("ntfy_topic", ""),
+        placeholder="e.g. likith-ml-roadmap-x7k2-2026",
+        help="Only use letters, numbers, and hyphens. No spaces."
+    )
+    if topic:
+        st.session_state["ntfy_topic"] = topic
+        st.markdown(f"**Your ntfy channel:** `ntfy.sh/{topic}`")
+        st.caption(f"In the ntfy app, subscribe to topic: `{topic}`")
+
+    st.markdown("### Step 3 — Set your daily reminder time")
+    notif_time = st.time_input(
+        "Send daily reminder at",
+        value=datetime.time(9, 0),
+        help="Pick a time you are usually free — morning works best."
+    )
+    if topic:
+        st.session_state["ntfy_time"] = notif_time.strftime("%H:%M")
+
+    st.markdown("### Step 4 — Test it right now")
+    if st.button("Send test notification to my phone"):
+        if not topic:
+            st.error("Enter your topic name first.")
+        else:
+            success = send_ntfy(
+                topic=topic,
+                title="ML Roadmap — test notification",
+                message="Your notifications are working! Time to study. Keep going.",
+                tags=["brain", "rocket"],
+                priority="default"
+            )
+            if success:
+                st.success("Notification sent! Check your phone.")
+            else:
+                st.error("Failed. Check your topic name and internet connection.")
+
+    if topic:
+        st.markdown("---")
+        st.markdown("### What your daily notification looks like")
+
+        done = sum(1 for k in all_keys if is_checked(k))
+        total = len(all_keys)
+        pct = int(done / total * 100) if total else 0
+
+        st.markdown(f"""
+        <div style="background:#161B22; border:1px solid #30363D; border-left: 4px solid #5DCAA5;
+                    border-radius:10px; padding:1rem 1.2rem; font-family:sans-serif;">
+            <div style="font-size:13px; color:#7D8590; margin-bottom:4px">📱 Preview</div>
+            <div style="font-size:15px; font-weight:600; color:#E6EDF3; margin-bottom:4px">
+                🧠 ML Roadmap — Daily Check-in
+            </div>
+            <div style="font-size:13px; color:#C9D1D9; line-height:1.6">
+                Progress: {pct}% complete · {done}/{total} topics done<br>
+                Today's target: 2h study (1h theory + 1h coding)<br>
+                Open your roadmap and tick at least ONE topic today.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Step 5 — Enable auto daily notifications on Streamlit Cloud")
+    st.info("""
+**ntfy.sh can't auto-send from Streamlit directly** (no background threads in cloud).
+Use one of these FREE options to schedule daily sends:
+
+**Option A — GitHub Actions (easiest, already have the repo):**
+Add a workflow file — it runs every day at your chosen time and calls ntfy.sh.
+Copy the workflow code below into `.github/workflows/daily_reminder.yml` in your repo.
+    """)
+
+    if topic:
+        hour, minute = notif_time.hour, notif_time.minute
+        utc_hour = (hour - 5) % 24
+        utc_minute = (minute - 30) % 60
+
+        workflow_yaml = f"""name: Daily ML Roadmap Reminder
+
+on:
+  schedule:
+    # Runs at {notif_time.strftime('%H:%M')} IST = {utc_hour:02d}:{utc_minute:02d} UTC
+    - cron: '{utc_minute} {utc_hour} * * *'
+  workflow_dispatch:  # allows manual trigger
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send ntfy notification
+        run: |
+          curl -X POST https://ntfy.sh/{topic} \\
+            -H "Title: ML Roadmap - Daily Study Time!" \\
+            -H "Priority: high" \\
+            -H "Tags: brain,fire,rocket" \\
+            -d "Time to grind. Open your roadmap and tick at least ONE topic today. Tier-1 is waiting. You got this."
+"""
+        st.code(workflow_yaml, language="yaml")
+        st.caption("Copy this file exactly into .github/workflows/daily_reminder.yml and push. GitHub runs it free every day.")
+
+    st.markdown("""
+**Option B — cron-job.org (zero setup, free):**
+1. Go to [cron-job.org](https://cron-job.org) — free account
+2. New cronjob → URL: `https://ntfy.sh/YOUR_TOPIC_NAME`
+3. Method: POST, Body: `Study time. Open your ML roadmap now.`
+4. Schedule: daily at your time
+Done.
+    """)
 
