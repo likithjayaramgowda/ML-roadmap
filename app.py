@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import random
 import datetime
@@ -9,6 +10,84 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+def render_animated_background():
+    components.html("""
+    <style>
+    #neural-bg {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        z-index: -1;
+        pointer-events: none;
+    }
+    </style>
+    <canvas id="neural-bg"></canvas>
+    <script>
+    (function() {
+        const canvas = document.getElementById('neural-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const DOTS = 60;
+        const MAX_DIST = 160;
+        const dots = Array.from({length: DOTS}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            r: Math.random() * 2.5 + 1.5
+        }));
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < DOTS; i++) {
+                for (let j = i + 1; j < DOTS; j++) {
+                    const dx = dots[i].x - dots[j].x;
+                    const dy = dots[i].y - dots[j].y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < MAX_DIST) {
+                        const alpha = (1 - dist / MAX_DIST) * 0.35;
+                        ctx.strokeStyle = `rgba(93, 202, 165, ${alpha})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.beginPath();
+                        ctx.moveTo(dots[i].x, dots[i].y);
+                        ctx.lineTo(dots[j].x, dots[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            dots.forEach(dot => {
+                ctx.beginPath();
+                ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(93, 202, 165, 0.7)';
+                ctx.fill();
+            });
+
+            dots.forEach(dot => {
+                dot.x += dot.vx;
+                dot.y += dot.vy;
+                if (dot.x < 0 || dot.x > canvas.width) dot.vx *= -1;
+                if (dot.y < 0 || dot.y > canvas.height) dot.vy *= -1;
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    })();
+    </script>
+    """, height=0)
+
+render_animated_background()
 
 # ── First-load toast ──────────────────────────────────────────────────────────
 if "welcomed" not in st.session_state:
@@ -639,6 +718,201 @@ QUOTES = [
     ("The harder you work for something, the greater you'll feel when you achieve it.", "Unknown"),
 ]
 
+PROJECTS_DETAIL = {
+    "tabular-baseline": {
+        "emoji": "📊",
+        "month": "Month 2–3",
+        "phase": "Beginner",
+        "overview": "End-to-end classifier on a real Kaggle-style tabular dataset.",
+        "goal": "Beat logistic regression by ≥3% F1 using LightGBM inside a sklearn Pipeline. Log everything to MLflow.",
+        "dataset_suggestion": "Use the Titanic, House Prices, or Telco Churn dataset from Kaggle.",
+        "steps": [
+            "Download dataset and do EDA — plot distributions, null counts, class balance",
+            "Build sklearn Pipeline with ColumnTransformer (StandardScaler for numerics, OneHotEncoder for categoricals)",
+            "Train baseline logistic regression — record F1 score",
+            "Train LightGBM inside the same Pipeline — tune with optuna (20 trials)",
+            "Run stratified 5-fold CV — report mean ± std F1",
+            "Log params, metrics, and the model artifact to MLflow",
+            "Write a clean README with results table and learning notes",
+        ],
+        "must_haves": [
+            "sklearn.Pipeline with ColumnTransformer (no leakage)",
+            "Stratified CV — not a single train/test split",
+            "LightGBM beating logistic regression by ≥3% F1",
+            "MLflow run with params + metrics + artifact logged",
+            "Seeded for reproducibility (random_state=42 everywhere)",
+        ],
+        "skills_demonstrated": ["Data preprocessing", "Pipeline design", "Gradient boosting", "Experiment tracking", "Avoiding data leakage"],
+        "interview_talking_point": "Walk an interviewer through your feature engineering choices and why you picked F1 over accuracy for this dataset.",
+        "tags": ["scikit-learn", "lightgbm", "mlflow", "pandas", "optuna"],
+        "time_estimate": "~15–20 hours",
+        "difficulty": "⭐⭐☆☆☆",
+    },
+    "mnist-from-scratch-then-torch": {
+        "emoji": "🔢",
+        "month": "Month 3",
+        "phase": "Beginner",
+        "overview": "Build a digit classifier twice — first with raw numpy, then with PyTorch CNN.",
+        "goal": "numpy MLP ≥95% test accuracy. PyTorch CNN ≥99%. Both fully seeded with a side-by-side comparison plot.",
+        "dataset_suggestion": "MNIST — load via torchvision.datasets.MNIST or keras.datasets.mnist.",
+        "steps": [
+            "Part 1 — numpy only: implement forward pass (matmul + ReLU + softmax), cross-entropy loss, and backprop manually",
+            "Train numpy MLP for 50 epochs with mini-batch SGD — hit ≥95% test accuracy",
+            "Part 2 — PyTorch: build CNN with 2 conv layers + batchnorm + dropout + FC head",
+            "Use DataLoader with augmentation (RandomRotation, RandomAffine)",
+            "Train with AdamW + cosine LR scheduler — hit ≥99% test accuracy",
+            "Plot: training curves side-by-side, confusion matrices for both models",
+            "Seed everything: random, numpy, torch, cudnn.deterministic=True",
+        ],
+        "must_haves": [
+            "numpy backprop from scratch — no autograd",
+            "PyTorch CNN hitting ≥99% test accuracy",
+            "Both models seeded identically for reproducibility",
+            "Comparison plot: accuracy curves + confusion matrices",
+            "torch.compile used for PyTorch model (free speedup)",
+        ],
+        "skills_demonstrated": ["Manual backprop", "PyTorch CNN", "Reproducibility", "Data augmentation", "Result visualization"],
+        "interview_talking_point": "Explain exactly how gradients flow through your numpy MLP — this is a classic whiteboard question.",
+        "tags": ["numpy", "pytorch", "CNN", "backprop", "reproducibility"],
+        "time_estimate": "~20–25 hours",
+        "difficulty": "⭐⭐⭐☆☆",
+    },
+    "rag-on-your-docs": {
+        "emoji": "🔍",
+        "month": "Month 4–5",
+        "phase": "Intermediate",
+        "overview": "Production-grade RAG pipeline over a real document corpus (≥10k chunks).",
+        "goal": "Hybrid search (BM25 + dense) with reranking, FastAPI endpoint, ragas faithfulness ≥0.85.",
+        "dataset_suggestion": "Use ArXiv ML papers, Wikipedia ML articles, or your own domain documents. Target ≥50 PDFs.",
+        "steps": [
+            "Collect corpus: ≥50 PDFs or documents in your domain",
+            "Chunk documents: try fixed (512 tokens), semantic, and recursive — compare retrieval quality",
+            "Embed with bge-small-en-v1.5 (free, local) — store in Qdrant",
+            "Build BM25 index with rank_bm25 for keyword search",
+            "Implement hybrid retrieval: combine BM25 + dense scores with RRF (Reciprocal Rank Fusion)",
+            "Add cross-encoder reranker (bge-reranker-base) to rerank top-20 → top-5",
+            "Build FastAPI endpoint: POST /query → returns JSON with answer + source citations",
+            "Add streaming response with SSE",
+            "Evaluate with ragas: faithfulness, context_recall, answer_relevancy — target ≥0.85 faithfulness",
+            "Document latency budget: P50 and P95 response times",
+        ],
+        "must_haves": [
+            "≥10k chunks in Qdrant",
+            "Hybrid BM25 + dense search with RRF fusion",
+            "Cross-encoder reranker (bge-reranker-base)",
+            "Structured JSON output with cited sources",
+            "ragas faithfulness ≥0.85 on 20-question eval set",
+            "FastAPI endpoint with streaming",
+            "Latency documented (P50/P95)",
+        ],
+        "skills_demonstrated": ["RAG pipeline design", "Vector search", "Hybrid retrieval", "Reranking", "API design", "LLM evaluation"],
+        "interview_talking_point": "Explain why naive RAG fails and how hybrid search + reranking fixes it. Show your ragas eval numbers.",
+        "tags": ["qdrant", "ragas", "FastAPI", "bge-reranker", "BM25", "sentence-transformers"],
+        "time_estimate": "~25–35 hours",
+        "difficulty": "⭐⭐⭐⭐☆",
+    },
+    "qlora-domain-tune": {
+        "emoji": "🤖",
+        "month": "Month 5",
+        "phase": "Intermediate",
+        "overview": "QLoRA fine-tune a 7–13B open model on a domain-specific dataset.",
+        "goal": "≥5% lift on held-out eval vs base model. Model card published on HF Hub. Full training run logged in wandb.",
+        "dataset_suggestion": "Use a domain you care about: medical QA (MedQA), legal text (legal_contracts on HF), code (the-stack), or finance (financial_phrasebank). Min 5k examples.",
+        "steps": [
+            "Pick a 7–13B base model: Llama-3.1-8B, Mistral-7B, or Qwen2.5-7B",
+            "Download and format dataset into chat template (ShareGPT or Alpaca format)",
+            "Configure QLoRA: rank=16, alpha=32, target_modules=['q_proj','v_proj'], load_in_4bit=True",
+            "Set up trl.SFTTrainer with bitsandbytes 4-bit quantization",
+            "Run training — log loss curve, gradient norm, and learning rate to wandb",
+            "Evaluate base model vs fine-tuned on held-out 200-example set — measure your metric (accuracy / ROUGE / exact match)",
+            "Confirm ≥5% lift over base model",
+            "Merge LoRA adapter into base weights using peft merge_and_unload()",
+            "Push adapter (not merged weights) to HF Hub with full model card",
+            "Model card must include: dataset description, training config, eval results table, limitations",
+        ],
+        "must_haves": [
+            "QLoRA config: rank=16, alpha=32, 4-bit quantization",
+            "trl.SFTTrainer with proper chat template",
+            "Before/after eval on held-out set showing ≥5% lift",
+            "wandb training run logged with loss + metrics",
+            "Adapter published to HF Hub",
+            "Model card with eval results table",
+        ],
+        "skills_demonstrated": ["QLoRA fine-tuning", "PEFT", "Dataset formatting", "LLM evaluation", "HF Hub publishing", "Experiment tracking"],
+        "interview_talking_point": "Explain the math of LoRA — why low-rank decomposition works, how rank affects capacity vs compute tradeoff.",
+        "tags": ["QLoRA", "trl", "bitsandbytes", "peft", "HF Hub", "wandb"],
+        "time_estimate": "~20–30 hours",
+        "difficulty": "⭐⭐⭐⭐☆",
+    },
+    "prod-llm-platform": {
+        "emoji": "🚀",
+        "month": "Month 6",
+        "phase": "Advanced",
+        "overview": "Multi-tenant LLM inference API with rate limiting, observability, and guardrails.",
+        "goal": "OpenAI-compatible endpoint backed by vllm. ≥99% uptime over 7-day soak test. Full observability stack.",
+        "dataset_suggestion": "No dataset needed — this is an infra project. Use any open 7B model (Llama-3.1-8B-Instruct).",
+        "steps": [
+            "Set up vllm server with Llama-3.1-8B-Instruct: docker run vllm/vllm-openai",
+            "Build FastAPI wrapper with OpenAI-compatible /v1/chat/completions endpoint",
+            "Add per-tenant API key auth (store in Redis or simple dict for demo)",
+            "Implement per-tenant rate limiting: X requests/min, Y tokens/day",
+            "Add per-tenant token budget tracking",
+            "Integrate OpenTelemetry: trace every request with latency, token counts, model ID",
+            "Add prompt injection detection: block common injection patterns with a classifier or regex allowlist",
+            "Add guardrails-ai output validator for PII detection",
+            "Write a 7-day soak test script: 1000 requests/hour, log error rate + p95 latency",
+            "Document: tokens/sec throughput, GPU memory usage, cost per 1M tokens estimate",
+        ],
+        "must_haves": [
+            "vllm backend with continuous batching",
+            "OpenAI-compatible API (works with openai Python client)",
+            "Per-tenant rate limits + token budgets",
+            "OpenTelemetry traces with token usage",
+            "Prompt injection detection",
+            "7-day soak test showing ≥99% uptime",
+            "Cost per 1M tokens documented",
+        ],
+        "skills_demonstrated": ["LLM serving", "API design", "Multi-tenancy", "Observability", "Security", "Performance testing"],
+        "interview_talking_point": "Walk through your architecture diagram. Explain how vllm's PagedAttention enables continuous batching and why it matters for throughput.",
+        "tags": ["vllm", "FastAPI", "OpenTelemetry", "guardrails", "Redis", "Docker"],
+        "time_estimate": "~30–40 hours",
+        "difficulty": "⭐⭐⭐⭐⭐",
+    },
+    "agent-with-evals": {
+        "emoji": "🧠",
+        "month": "Month 6",
+        "phase": "Advanced",
+        "overview": "Tool-using LLM agent with a full regression eval suite and CI integration.",
+        "goal": "≥5 tools, ≥50 golden eval cases, CI fails on quality regression, deployed with traces in Langfuse.",
+        "dataset_suggestion": "Build your own golden eval set — 50 question/expected-output pairs that test each tool. This IS the hard part.",
+        "steps": [
+            "Design agent purpose: choose a domain (e.g. ML paper researcher, code reviewer, data analyst)",
+            "Implement ≥5 tools with Pydantic-validated args: e.g. web_search, read_file, run_python, query_db, send_summary",
+            "Build agent graph in LangGraph with: planner node, tool executor node, reflection node",
+            "Add Langfuse tracing — every tool call and LLM call gets a span",
+            "Write ≥50 golden eval cases: (user_query, expected_tool_calls, expected_output_contains)",
+            "Build eval harness: run all 50 cases, compute pass rate",
+            "Add GitHub Actions workflow: runs eval on every PR, fails if pass rate drops >5% from baseline",
+            "Deploy on Cloud Run or Railway with autoscaling",
+            "Write runbook: how to debug a failing eval case",
+        ],
+        "must_haves": [
+            "≥5 tools with Pydantic-validated input schemas",
+            "LangGraph stateful agent (not simple chain)",
+            "≥50 golden eval cases in a JSON/YAML file",
+            "CI that fails on quality regression (GitHub Actions)",
+            "Langfuse traces for every run",
+            "Deployed and publicly accessible",
+            "Runbook for debugging eval failures",
+        ],
+        "skills_demonstrated": ["Agent architecture", "Tool design", "Eval engineering", "CI/CD for AI", "Observability", "Deployment"],
+        "interview_talking_point": "Explain your eval design — how do you catch regressions without flaky tests? What makes a good golden dataset?",
+        "tags": ["LangGraph", "Langfuse", "Pydantic", "CI/CD", "Cloud Run", "evals"],
+        "time_estimate": "~35–45 hours",
+        "difficulty": "⭐⭐⭐⭐⭐",
+    },
+}
+
 RES_COLORS = {
     "YT":     ("#2A1A1A", "#FF6B6B", "▶"),
     "DOCS":   ("#0D1F33", "#5BA4D4", "📄"),
@@ -659,10 +933,14 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
+section[data-testid="stAppViewContainer"] {
+    background: transparent !important;
+}
+section[data-testid="stAppViewContainer"] > div:first-child {
+    background: transparent !important;
+}
 .stApp {
-    background-color: #0D1117;
-    background-image: radial-gradient(circle, #1a2332 1px, transparent 1px);
-    background-size: 28px 28px;
+    background: #0D1117 !important;
 }
 
 .main .block-container {
@@ -934,6 +1212,28 @@ def render_phase(phase_key, tip_html=None):
         st.session_state.checked[key] = checked
 
 
+SYSTEM_PROMPT = """You are an AI mentor embedded inside a 6-month ML Engineer Roadmap dashboard. Your ONLY job is to help the user understand and complete this specific roadmap.
+
+YOU MUST REFUSE any question not related to this roadmap. If asked something outside the roadmap scope, reply: "I'm your roadmap mentor — I can only help with topics in this 6-month ML roadmap. Ask me about any concept, project, or resource from the dashboard!"
+
+WHAT YOU CAN HELP WITH:
+1. Explaining any concept in the roadmap (math, ML algorithms, PyTorch, transformers, RAG, fine-tuning, MLOps, agents)
+2. Guiding through the 6 projects — step by step help, debugging advice, architecture decisions
+3. Resources — explaining what to focus on in each linked resource
+4. Interview prep — practicing the listed questions, explaining mental models
+5. Motivation and study planning — how to stay on track, prioritize topics
+
+THE ROADMAP COVERS:
+BEGINNER (months 1-3): Linear algebra, calculus, probability, numpy, pandas, polars, scikit-learn, classical ML (linear/logistic regression, decision trees, random forests, XGBoost, LightGBM, k-means, PCA), model evaluation metrics, feature engineering, neural networks (MLP, backprop, activations, optimizers), PyTorch (tensors, autograd, nn.Module, Dataset, DataLoader, training loop, checkpoints), reproducibility.
+
+INTERMEDIATE (months 4-5): CNNs (ResNet, EfficientNet), RNNs/LSTMs, Transformers (self-attention, multi-head, positional encodings, RoPE, ALiBi), ViT, diffusion models, mixed precision training (bf16/fp16), DDP/FSDP, DeepSpeed ZeRO, Accelerate, hyperparameter tuning (Optuna, ASHA), NLP tokenization (BPE, WordPiece), HuggingFace ecosystem (transformers, datasets, peft, trl), LoRA, QLoRA, SFT, DPO, GRPO, RAG (chunking, vector DBs, hybrid search, reranking), prompt engineering (CoT, ReAct, structured output), ragas evaluation.
+
+ADVANCED (month 6): LLM internals (Flash Attention, KV cache, paged attention, speculative decoding, quantization GPTQ/AWQ/GGUF), vllm serving, continuous batching, CI/CD for ML (DVC, MLflow, GitHub Actions), drift detection (Evidently), observability (Langfuse, LangSmith, OpenTelemetry), LangGraph agents, MCP, prompt injection defense, guardrails.
+
+PROJECTS: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals.
+
+Be concise, practical, and encouraging. Use code examples when explaining concepts. Keep responses under 300 words unless the user asks for more detail."""
+
 # ── Pages ─────────────────────────────────────────────────────────────────────
 
 if page == "Overview":
@@ -1061,15 +1361,43 @@ elif page == "Projects":
         )
         st.markdown("")
         for proj in phase["projects"]:
-            tags_html = " ".join(f'<span class="tag">{tg}</span>' for tg in proj["tags"])
-            st.markdown(
-                f'<div class="proj-card">'
-                f'<div class="proj-title">📦 {proj["name"]} <span style="font-size:11px;font-weight:400;color:#8B949E;margin-left:8px">{proj["month"]}</span></div>'
-                f'<div class="proj-desc">{proj["desc"]}</div>'
-                f'{tags_html}'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+            name = proj["name"]
+            p = PROJECTS_DETAIL.get(name)
+            if p:
+                expander_label = f"{p['emoji']} {name} — {p['time_estimate']} · {p['difficulty']}"
+                with st.expander(expander_label):
+                    st.markdown(f"**Overview:** {p['overview']}")
+                    st.markdown(f"**Goal:** {p['goal']}")
+                    st.markdown(f"**Dataset suggestion:** {p['dataset_suggestion']}")
+                    st.markdown("---")
+                    st.markdown("**Step-by-step:**")
+                    for i, step in enumerate(p["steps"], 1):
+                        st.markdown(f"{i}. {step}")
+                    st.markdown("---")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("**Must-haves (checklist):**")
+                        for must in p["must_haves"]:
+                            key = f"proj_must_{name}_{must[:20]}"
+                            val = st.checkbox(must, key=key, value=st.session_state.checked.get(key, False))
+                            st.session_state.checked[key] = val
+                    with col2:
+                        st.markdown("**Skills demonstrated:**")
+                        for skill in p["skills_demonstrated"]:
+                            st.markdown(f"• {skill}")
+                    st.info(f"🎯 **Interview talking point:** {p['interview_talking_point']}")
+                    tags_html = " ".join(f'<span class="tag">{tg}</span>' for tg in p["tags"])
+                    st.markdown(tags_html, unsafe_allow_html=True)
+            else:
+                tags_html = " ".join(f'<span class="tag">{tg}</span>' for tg in proj["tags"])
+                st.markdown(
+                    f'<div class="proj-card">'
+                    f'<div class="proj-title">📦 {name} <span style="font-size:11px;font-weight:400;color:#8B949E;margin-left:8px">{proj["month"]}</span></div>'
+                    f'<div class="proj-desc">{proj["desc"]}</div>'
+                    f'{tags_html}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
         st.markdown("---")
 
 elif page == "Interview Prep":
@@ -1102,13 +1430,30 @@ elif page == "Interview Prep":
 
 elif page == "AI Mentor":
     st.markdown("# AI Mentor — ask me anything")
-    st.caption("Powered by Claude. Ask about any topic in the roadmap.")
+    st.caption("Powered by Groq (llama-3.3-70b). Roadmap-scoped mentor — ask about any concept, project, or resource.")
 
     col_clear, _ = st.columns([1, 5])
     with col_clear:
         if st.button("Clear chat"):
             st.session_state.messages = []
             st.rerun()
+
+    if not st.session_state.messages:
+        st.markdown("**Try asking:**")
+        starter_qs = [
+            "Explain how LoRA works mathematically",
+            "Help me debug my PyTorch training loop — loss isn't decreasing",
+            "What should I focus on in week 1?",
+            "Walk me through the tabular-baseline project step by step",
+            "What's the difference between DDP and FSDP?",
+            "How do I know if my RAG pipeline has data leakage?",
+            "Quiz me on transformer attention",
+        ]
+        cols = st.columns(2)
+        for i, q in enumerate(starter_qs):
+            if cols[i % 2].button(q, key=f"starter_{i}"):
+                st.session_state.messages.append({"role": "user", "content": q})
+                st.rerun()
 
     # Display existing messages
     for msg in st.session_state.messages:
@@ -1139,21 +1484,12 @@ elif page == "AI Mentor":
 
                 client = Groq(api_key=api_key)
 
-                system_prompt = """You are an expert ML engineering mentor helping a student follow a 6-month roadmap to become a job-ready ML engineer at a tier-1 company.
-
-The roadmap covers:
-- Beginner (months 1-3): Math foundations, Python ML toolchain, Classical ML, Neural nets, PyTorch
-- Intermediate (months 4-5): Deep learning architectures, Training at scale, NLP, HuggingFace, RAG, Fine-tuning LLMs
-- Advanced (month 6): LLM internals, Inference serving, MLOps, Agent frameworks, Interview prep
-
-Be concise, practical, and encouraging. When explaining concepts, use code examples where helpful. Always relate answers back to what they need to know for tier-1 ML engineering interviews."""
-
                 with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
                         response = client.chat.completions.create(
                             model="llama-3.3-70b-versatile",
                             max_tokens=1024,
-                            messages=[{"role": "system", "content": system_prompt}] +
+                            messages=[{"role": "system", "content": SYSTEM_PROMPT}] +
                                      [{"role": m["role"], "content": m["content"]}
                                       for m in st.session_state.messages],
                         )
