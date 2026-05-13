@@ -1,5 +1,7 @@
 import streamlit as st
 import json
+import random
+import datetime
 
 st.set_page_config(
     page_title="ML Engineer Roadmap — 6 Months to Tier-1",
@@ -8,9 +10,17 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── First-load toast ──────────────────────────────────────────────────────────
+if "welcomed" not in st.session_state:
+    st.session_state.welcomed = True
+    st.toast("Welcome back! Keep pushing — consistency beats intensity. 🚀")
+
 # ── Persist checkboxes across rerenders ──────────────────────────────────────
 if "checked" not in st.session_state:
     st.session_state.checked = {}
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 def toggle(key):
     st.session_state.checked[key] = not st.session_state.checked.get(key, False)
@@ -24,8 +34,8 @@ ROADMAP = {
         "label": "Beginner",
         "months": "Months 1–3",
         "hours": "~90–130 hrs",
-        "color": "#0F6E56",
-        "bg": "#E1F5EE",
+        "color": "#5DCAA5",
+        "bg": "#0F2A22",
         "sections": [
             {
                 "name": "Math Foundations",
@@ -239,8 +249,8 @@ ROADMAP = {
         "label": "Intermediate",
         "months": "Months 4–5",
         "hours": "~110–160 hrs",
-        "color": "#185FA5",
-        "bg": "#E6F1FB",
+        "color": "#378ADD",
+        "bg": "#0D1F33",
         "sections": [
             {
                 "name": "Deep Learning Architectures",
@@ -438,8 +448,8 @@ ROADMAP = {
         "label": "Advanced",
         "months": "Month 6",
         "hours": "~120–170 hrs",
-        "color": "#3C3489",
-        "bg": "#EEEDFE",
+        "color": "#7F77DD",
+        "bg": "#16123A",
         "sections": [
             {
                 "name": "LLM Internals",
@@ -614,25 +624,61 @@ MENTAL_MODELS = [
     ("PEFT", "Train a tiny number of new params (LoRA adapters) and freeze the base. Cheap, composable, near-FT quality."),
 ]
 
+QUOTES = [
+    ("The expert in anything was once a beginner.", "Helen Hayes"),
+    ("An investment in knowledge pays the best interest.", "Benjamin Franklin"),
+    ("The beautiful thing about learning is that no one can take it away from you.", "B.B. King"),
+    ("Do not wait to strike till the iron is hot; but make it hot by striking.", "W.B. Yeats"),
+    ("It does not matter how slowly you go as long as you do not stop.", "Confucius"),
+    ("Success is the sum of small efforts repeated day in and day out.", "Robert Collier"),
+    ("The secret of getting ahead is getting started.", "Mark Twain"),
+    ("Push yourself, because no one else is going to do it for you.", "Unknown"),
+    ("Great things never come from comfort zones.", "Unknown"),
+    ("Dream it. Wish it. Do it.", "Unknown"),
+    ("Don't watch the clock; do what it does. Keep going.", "Sam Levenson"),
+    ("The harder you work for something, the greater you'll feel when you achieve it.", "Unknown"),
+]
+
 RES_COLORS = {
-    "YT": ("#FCEBEB", "#A32D2D", "▶"),
-    "DOCS": ("#E6F1FB", "#0C447C", "📄"),
-    "BLOG": ("#E1F5EE", "#085041", "✍"),
-    "COURSE": ("#EEEDFE", "#3C3489", "🎓"),
-    "GH": ("#F1EFE8", "#2C2C2A", "⌥"),
-    "PAPER": ("#FAEEDA", "#633806", "📑"),
-    "BOOK": ("#FBEAF0", "#72243E", "📚"),
-    "WEB": ("#E6F1FB", "#0C447C", "🌐"),
+    "YT":     ("#2A1A1A", "#FF6B6B", "▶"),
+    "DOCS":   ("#0D1F33", "#5BA4D4", "📄"),
+    "BLOG":   ("#0F2A22", "#5DCAA5", "✍"),
+    "COURSE": ("#1A1535", "#9D96E8", "🎓"),
+    "GH":     ("#1A1A1A", "#C9D1D9", "⌥"),
+    "PAPER":  ("#2A1E0D", "#D4A44A", "📑"),
+    "BOOK":   ("#2A0E1A", "#D48BA5", "📚"),
+    "WEB":    ("#0D1F33", "#5BA4D4", "🌐"),
 }
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
 
-.main .block-container { padding-top: 1.5rem; padding-bottom: 3rem; max-width: 1100px; }
+.stApp {
+    background-color: #0D1117;
+    background-image: radial-gradient(circle, #1a2332 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+.main .block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
+    max-width: 1100px;
+}
+
+/* Cards */
+.card {
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: .75rem;
+}
 
 .phase-header {
     display: flex; align-items: center; gap: 12px;
@@ -643,57 +689,157 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     border-radius: 99px; letter-spacing: .04em;
 }
 .section-divider {
-    font-size: 11px; font-weight: 600; color: #888;
+    font-size: 11px; font-weight: 600; color: #8B949E;
     letter-spacing: .07em; text-transform: uppercase;
     margin: 1.2rem 0 .4rem; padding-bottom: 4px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #21262D;
 }
 .topic-row {
     display: grid; grid-template-columns: 1.6fr 1fr;
-    border-bottom: 1px solid #f0f0f0; padding: 8px 0;
+    border-bottom: 1px solid #21262D; padding: 8px 0;
     align-items: center; gap: 12px;
 }
-.topic-name { font-size: 13.5px; font-weight: 500; color: #111; }
-.topic-sub  { font-size: 11px; color: #999; margin-top: 2px; }
+.topic-name { font-size: 13.5px; font-weight: 500; color: #E6EDF3; }
+.topic-sub  { font-size: 11px; color: #8B949E; margin-top: 2px; }
 .res-badge  {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; padding: 4px 10px; border-radius: 6px;
     text-decoration: none; font-weight: 500; width: fit-content;
 }
 .proj-card {
-    border: 1px solid #eee; border-radius: 12px;
+    border: 1px solid #21262D; border-radius: 12px;
     padding: 1rem 1.2rem; margin-bottom: .75rem;
-    background: #fff;
+    background: #161B22;
 }
-.proj-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-.proj-desc  { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px; }
-.tag { display: inline-block; font-size: 11px; padding: 2px 8px;
-       border-radius: 6px; background: #f5f5f5; color: #555;
-       margin-right: 4px; margin-bottom: 2px; }
+.proj-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: #E6EDF3; }
+.proj-desc  { font-size: 13px; color: #8B949E; line-height: 1.5; margin-bottom: 8px; }
+.tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px;
+    border-radius: 6px; background: #21262D; color: #8B949E;
+    margin-right: 4px; margin-bottom: 2px;
+}
 .milestone-item {
-    font-size: 13px; color: #444; padding: 5px 0;
-    border-bottom: 1px solid #f5f5f5; display: flex; gap: 8px; align-items: flex-start;
+    font-size: 13px; color: #C9D1D9; padding: 5px 0;
+    border-bottom: 1px solid #21262D; display: flex; gap: 8px; align-items: flex-start;
 }
 .q-card {
-    background: #f9f9f9; border-radius: 8px;
-    padding: 10px 14px; font-size: 13px; color: #333;
-    margin-bottom: 6px; cursor: pointer;
+    background: #161B22; border: 1px solid #21262D; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; color: #C9D1D9;
+    margin-bottom: 6px;
 }
 .mental-card {
-    border: 1px solid #eee; border-radius: 10px;
+    border: 1px solid #21262D; border-radius: 10px;
     padding: .85rem 1rem; margin-bottom: .6rem;
+    background: #161B22;
 }
-.mental-title { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 3px; }
-.mental-body  { font-size: 13px; color: #555; line-height: 1.5; }
+.mental-title { font-size: 14px; font-weight: 600; color: #E6EDF3; margin-bottom: 3px; }
+.mental-body  { font-size: 13px; color: #8B949E; line-height: 1.5; }
 .stat-box {
-    background: #f7f7f7; border-radius: 10px;
+    background: #161B22; border: 1px solid #21262D; border-radius: 10px;
     padding: 1rem; text-align: center;
 }
-.stat-val   { font-size: 26px; font-weight: 600; color: #111; }
-.stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+.stat-val   { font-size: 26px; font-weight: 600; color: #E6EDF3; }
+.stat-label { font-size: 12px; color: #8B949E; margin-top: 2px; }
+
+/* Big progress ring card */
+.progress-ring-card {
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-radius: 12px;
+    padding: 2rem 1.2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+.progress-pct {
+    font-size: 64px;
+    font-weight: 700;
+    color: #5DCAA5;
+    line-height: 1;
+}
+.progress-sub {
+    font-size: 14px;
+    color: #8B949E;
+    margin-top: 6px;
+}
+
+/* Quote card */
+.quote-card {
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-left: 3px solid #5DCAA5;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.2rem;
+}
+.quote-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #5DCAA5;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.quote-text {
+    font-size: 16px;
+    font-style: italic;
+    color: #E6EDF3;
+    line-height: 1.5;
+}
+.quote-author {
+    font-size: 13px;
+    color: #8B949E;
+    margin-top: 6px;
+}
+
+/* Phase tip box */
+.tip-box {
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-radius: 10px;
+    padding: .75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 13px;
+    color: #C9D1D9;
+    line-height: 1.5;
+}
+
+/* Month cards on overview */
+.month-card {
+    border-radius: 0 8px 8px 0;
+    background: #161B22;
+    margin-bottom: .75rem;
+    padding: .75rem 1rem;
+}
+
 stButton > button { border-radius: 8px !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Build all_keys once (used in sidebar + overview) ─────────────────────────
+all_keys = []
+for phase in ROADMAP.values():
+    for sec in phase["sections"]:
+        for i, t in enumerate(sec["topics"]):
+            all_keys.append(f"{phase['label']}_{sec['name']}_{i}")
+    for j, m in enumerate(phase["milestones"]):
+        all_keys.append(f"{phase['label']}_mile_{j}")
+
+done_total = sum(1 for k in all_keys if is_checked(k))
+total_items = len(all_keys)
+pct_total = int(done_total / total_items * 100) if total_items else 0
+
+
+def _phase_progress(phase_key):
+    phase = ROADMAP[phase_key]
+    keys = []
+    for sec in phase["sections"]:
+        for i in range(len(sec["topics"])):
+            keys.append(f"{phase['label']}_{sec['name']}_{i}")
+    for j in range(len(phase["milestones"])):
+        keys.append(f"{phase['label']}_mile_{j}")
+    p_done = sum(1 for k in keys if is_checked(k))
+    return p_done, len(keys)
+
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -703,27 +849,13 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep"],
+        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "AI Mentor"],
         label_visibility="collapsed",
     )
 
     st.markdown("---")
-
-    # global progress
-    all_keys = []
-    for phase in ROADMAP.values():
-        for sec in phase["sections"]:
-            for i, t in enumerate(sec["topics"]):
-                all_keys.append(f"{phase['label']}_{sec['name']}_{i}")
-        for j, m in enumerate(phase["milestones"]):
-            all_keys.append(f"{phase['label']}_mile_{j}")
-
-    done = sum(1 for k in all_keys if is_checked(k))
-    total = len(all_keys)
-    pct = int(done / total * 100) if total else 0
-
     st.markdown(f"**Overall progress**")
-    st.progress(pct / 100, text=f"{pct}% · {done}/{total} done")
+    st.progress(pct_total / 100, text=f"{pct_total}% · {done_total}/{total_items} done")
     st.markdown("---")
     st.markdown("**Daily target:** 2h weekdays + 3–4h Saturday")
     st.markdown("**Weekly target:** ~15 hours")
@@ -733,7 +865,7 @@ with st.sidebar:
 
 def render_resource(t):
     rt = t["res_type"]
-    bg, fg, icon = RES_COLORS.get(rt, ("#eee", "#333", "🔗"))
+    bg, fg, icon = RES_COLORS.get(rt, ("#21262D", "#C9D1D9", "🔗"))
     st.markdown(
         f'<a class="res-badge" href="{t["res_url"]}" target="_blank" '
         f'style="background:{bg}; color:{fg};">'
@@ -744,27 +876,23 @@ def render_resource(t):
     )
 
 
-def render_phase(phase_key):
+def render_phase(phase_key, tip_html=None):
     phase = ROADMAP[phase_key]
     pill_style = f"background:{phase['bg']};color:{phase['color']};"
+
+    if tip_html:
+        st.markdown(f'<div class="tip-box">{tip_html}</div>', unsafe_allow_html=True)
 
     st.markdown(
         f'<div class="phase-header">'
         f'<span class="phase-pill" style="{pill_style}">{phase["label"]}</span>'
-        f'<span style="font-size:18px;font-weight:500">{phase["months"]} &nbsp;·&nbsp; {phase["hours"]}</span>'
+        f'<span style="font-size:18px;font-weight:500;color:#E6EDF3">{phase["months"]} &nbsp;·&nbsp; {phase["hours"]}</span>'
         f'</div>',
         unsafe_allow_html=True,
     )
 
-    # phase progress
-    phase_keys = []
-    for sec in phase["sections"]:
-        for i in range(len(sec["topics"])):
-            phase_keys.append(f"{phase['label']}_{sec['name']}_{i}")
-    for j in range(len(phase["milestones"])):
-        phase_keys.append(f"{phase['label']}_mile_{j}")
-    p_done = sum(1 for k in phase_keys if is_checked(k))
-    p_pct = int(p_done / len(phase_keys) * 100) if phase_keys else 0
+    p_done, p_total = _phase_progress(phase_key)
+    p_pct = int(p_done / p_total * 100) if p_total else 0
     st.progress(p_pct / 100, text=f"{p_pct}% of this phase complete")
 
     for sec in phase["sections"]:
@@ -785,21 +913,19 @@ def render_phase(phase_key):
             with col2:
                 render_resource(t)
 
-    # projects
     st.markdown("---")
     st.markdown("#### Projects")
     for proj in phase["projects"]:
         tags_html = " ".join(f'<span class="tag">{tg}</span>' for tg in proj["tags"])
         st.markdown(
             f'<div class="proj-card">'
-            f'<div class="proj-title">📦 {proj["name"]} <span style="font-size:11px;font-weight:400;color:#999;margin-left:8px">{proj["month"]}</span></div>'
+            f'<div class="proj-title">📦 {proj["name"]} <span style="font-size:11px;font-weight:400;color:#8B949E;margin-left:8px">{proj["month"]}</span></div>'
             f'<div class="proj-desc">{proj["desc"]}</div>'
             f'{tags_html}'
             f'</div>',
             unsafe_allow_html=True,
         )
 
-    # milestones
     st.markdown("---")
     st.markdown("#### ✅ Done when you can...")
     for j, m in enumerate(phase["milestones"]):
@@ -813,6 +939,49 @@ def render_phase(phase_key):
 if page == "Overview":
     st.markdown("# ML Engineer Roadmap — 6 Months to Tier-1")
     st.caption("320–460 hrs total · Prereqs: Python intermediate, linear algebra basics, git fluency")
+
+    # Daily motivation quote (seeded to today — stable all day)
+    random.seed(datetime.date.today().toordinal())
+    quote_text, quote_author = random.choice(QUOTES)
+    st.markdown(
+        f'<div class="quote-card">'
+        f'<div class="quote-label">📅 Today\'s focus</div>'
+        f'<div class="quote-text">"{quote_text}"</div>'
+        f'<div class="quote-author">— {quote_author}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Big overall progress card
+    st.markdown(
+        f'<div class="progress-ring-card">'
+        f'<div class="progress-pct">{pct_total}%</div>'
+        f'<div class="progress-sub">of roadmap complete &nbsp;·&nbsp; {done_total} / {total_items} items</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Per-phase progress bars
+    phase_cfg = [
+        ("beginner",     "Beginner",     "#5DCAA5"),
+        ("intermediate", "Intermediate", "#378ADD"),
+        ("advanced",     "Advanced",     "#7F77DD"),
+    ]
+    for pk, label, color in phase_cfg:
+        pd, pt = _phase_progress(pk)
+        pp = int(pd / pt * 100) if pt else 0
+        st.markdown(
+            f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">'
+            f'<span style="font-size:13px;font-weight:500;color:{color};min-width:90px">{label}</span>'
+            f'<div style="flex:1;background:#21262D;border-radius:99px;height:8px;">'
+            f'<div style="width:{pp}%;background:{color};height:8px;border-radius:99px;"></div>'
+            f'</div>'
+            f'<span style="font-size:12px;color:#8B949E;min-width:90px;text-align:right">{pd} / {pt} done</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
 
     c1, c2, c3, c4 = st.columns(4)
     for col, val, label in zip(
@@ -836,17 +1005,17 @@ if page == "Overview":
         ("Month 5", "Fine-tuning + RAG + LLMs", "~65h", "intermediate"),
         ("Month 6", "MLOps + Agents + Serving", "~70h", "advanced"),
     ]
-    phase_colors = {"beginner": "#0F6E56", "intermediate": "#185FA5", "advanced": "#3C3489"}
+    phase_colors = {"beginner": "#5DCAA5", "intermediate": "#378ADD", "advanced": "#7F77DD"}
 
     cols = st.columns(3)
     for idx, (month, topic, hrs, ph) in enumerate(months):
         color = phase_colors[ph]
         cols[idx % 3].markdown(
             f'<div style="border-left:3px solid {color};padding:.75rem 1rem;'
-            f'border-radius:0 8px 8px 0;background:#fafafa;margin-bottom:.75rem;">'
+            f'border-radius:0 8px 8px 0;background:#161B22;border:1px solid #21262D;border-left:3px solid {color};margin-bottom:.75rem;">'
             f'<div style="font-size:11px;font-weight:600;color:{color};margin-bottom:2px">{month}</div>'
-            f'<div style="font-size:13px;font-weight:500;color:#111">{topic}</div>'
-            f'<div style="font-size:11px;color:#999;margin-top:2px">{hrs}</div>'
+            f'<div style="font-size:13px;font-weight:500;color:#E6EDF3">{topic}</div>'
+            f'<div style="font-size:11px;color:#8B949E;margin-top:2px">{hrs}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -862,13 +1031,22 @@ if page == "Overview":
         st.markdown(f"✅ &nbsp; {habit}")
 
 elif page == "Beginner":
-    render_phase("beginner")
+    render_phase(
+        "beginner",
+        tip_html="💡 <strong>Tip:</strong> Don't skip the math. Every concept here will appear in interviews. Go slow, go deep.",
+    )
 
 elif page == "Intermediate":
-    render_phase("intermediate")
+    render_phase(
+        "intermediate",
+        tip_html="💡 <strong>Tip:</strong> At this stage, run every concept in code within 24 hours of learning it. Theory without practice evaporates.",
+    )
 
 elif page == "Advanced":
-    render_phase("advanced")
+    render_phase(
+        "advanced",
+        tip_html="💡 <strong>Tip:</strong> Start applying for jobs now. Interviews take 4–6 weeks. Don't wait until you feel 'ready'.",
+    )
 
 elif page == "Projects":
     st.markdown("# All 6 Projects")
@@ -886,7 +1064,7 @@ elif page == "Projects":
             tags_html = " ".join(f'<span class="tag">{tg}</span>' for tg in proj["tags"])
             st.markdown(
                 f'<div class="proj-card">'
-                f'<div class="proj-title">📦 {proj["name"]} <span style="font-size:11px;font-weight:400;color:#999;margin-left:8px">{proj["month"]}</span></div>'
+                f'<div class="proj-title">📦 {proj["name"]} <span style="font-size:11px;font-weight:400;color:#8B949E;margin-left:8px">{proj["month"]}</span></div>'
                 f'<div class="proj-desc">{proj["desc"]}</div>'
                 f'{tags_html}'
                 f'</div>',
@@ -921,3 +1099,75 @@ elif page == "Interview Prep":
         "A cross-functional data/model/infra decision you drove",
     ]:
         st.markdown(f"⭐ &nbsp; {story}")
+
+elif page == "AI Mentor":
+    st.markdown("# AI Mentor — ask me anything")
+    st.caption("Powered by Claude. Ask about any topic in the roadmap.")
+
+    col_clear, _ = st.columns([1, 5])
+    with col_clear:
+        if st.button("Clear chat"):
+            st.session_state.messages = []
+            st.rerun()
+
+    # Display existing messages
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # Chat input
+    if prompt := st.chat_input("Ask your ML mentor anything..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Check for API key
+        api_key = None
+        try:
+            api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
+        except Exception:
+            pass
+
+        if not api_key or api_key == "your-key-here":
+            st.warning(
+                "No API key found. Add `ANTHROPIC_API_KEY = 'sk-...'` to `.streamlit/secrets.toml` to enable the AI Mentor.",
+                icon="⚠️",
+            )
+        else:
+            try:
+                import anthropic
+
+                client = anthropic.Anthropic(api_key=api_key)
+
+                system_prompt = """You are an expert ML engineering mentor helping a student follow a 6-month roadmap to become a job-ready ML engineer at a tier-1 company.
+
+The roadmap covers:
+- Beginner (months 1-3): Math foundations, Python ML toolchain, Classical ML, Neural nets, PyTorch
+- Intermediate (months 4-5): Deep learning architectures, Training at scale, NLP, HuggingFace, RAG, Fine-tuning LLMs
+- Advanced (month 6): LLM internals, Inference serving, MLOps, Agent frameworks, Interview prep
+
+Be concise, practical, and encouraging. When explaining concepts, use code examples where helpful. Always relate answers back to what they need to know for tier-1 ML engineering interviews."""
+
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        response = client.messages.create(
+                            model="claude-haiku-4-5-20251001",
+                            max_tokens=1024,
+                            system=system_prompt,
+                            messages=[
+                                {"role": m["role"], "content": m["content"]}
+                                for m in st.session_state.messages
+                            ],
+                        )
+                        reply = response.content[0].text
+                        st.markdown(reply)
+
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+
+            except ImportError:
+                st.error("The `anthropic` package is not installed. Run `pip install anthropic`.")
+            except Exception as e:
+                st.error(f"API error: {e}")
+
+    st.markdown("---")
+    st.caption("Add your API key to `.streamlit/secrets.toml` as `ANTHROPIC_API_KEY = 'sk-...'`")
