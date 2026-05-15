@@ -7,21 +7,9 @@ import requests
 import time as time_module
 
 
-import re as _re
-
-_TOPIC_RE = _re.compile(r'^[A-Za-z0-9_-]{3,64}$')
-
-def _validate_topic(topic: str) -> str:
-    """Return sanitized topic or raise ValueError."""
-    topic = topic.strip()
-    if not _TOPIC_RE.match(topic):
-        raise ValueError("Topic must be 3–64 characters: letters, numbers, hyphens, underscores only.")
-    return topic
-
 def send_ntfy(topic: str, title: str, message: str, tags: list = None, priority: str = "default") -> bool:
     """Send a push notification via ntfy.sh — completely free, no auth needed."""
     try:
-        topic = _validate_topic(topic)
         headers = {
             "Title": title,
             "Priority": priority,
@@ -34,8 +22,6 @@ def send_ntfy(topic: str, title: str, message: str, tags: list = None, priority:
             timeout=10
         )
         return response.status_code == 200
-    except ValueError:
-        return False
     except Exception:
         return False
 
@@ -46,164 +32,333 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown("""
+<style>
+@keyframes aurora1 {
+    0%,100% { transform: translate(0,0) scale(1); opacity: 0.5; }
+    50%      { transform: translate(80px,-60px) scale(1.1); opacity: 0.7; }
+}
+@keyframes aurora2 {
+    0%,100% { transform: translate(0,0) scale(1); opacity: 0.4; }
+    50%      { transform: translate(-60px,80px) scale(1.08); opacity: 0.6; }
+}
+@keyframes aurora3 {
+    0%,100% { transform: translate(0,0) scale(1); opacity: 0.35; }
+    50%      { transform: translate(50px,50px) scale(1.05); opacity: 0.55; }
+}
+
+.bg-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+}
+#b1 { width:600px; height:500px; top:-100px; left:-100px;
+      background:radial-gradient(ellipse, rgba(93,202,165,0.12), transparent 70%);
+      animation: aurora1 20s ease-in-out infinite; }
+#b2 { width:700px; height:600px; top:30vh; right:-150px;
+      background:radial-gradient(ellipse, rgba(55,138,221,0.1), transparent 70%);
+      animation: aurora2 25s ease-in-out infinite; }
+#b3 { width:650px; height:500px; bottom:-100px; left:30vw;
+      background:radial-gradient(ellipse, rgba(127,119,221,0.09), transparent 70%);
+      animation: aurora3 22s ease-in-out infinite; }
+
+.stApp { background: #020810 !important; }
+section[data-testid="stSidebar"] {
+    background: rgba(2,8,16,0.95) !important;
+    backdrop-filter: blur(12px) !important;
+    border-right: 1px solid rgba(93,202,165,0.1) !important;
+}
+header[data-testid="stHeader"] {
+    background: rgba(2,8,16,0.8) !important;
+    backdrop-filter: blur(8px) !important;
+}
+.main .block-container {
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+}
+</style>
+<div class="bg-blob" id="b1"></div>
+<div class="bg-blob" id="b2"></div>
+<div class="bg-blob" id="b3"></div>
+""", unsafe_allow_html=True)
+
 def render_animated_background():
     st.markdown("""
     <style>
-    @keyframes drift1 {
-        0%   { transform: translate(0px, 0px) scale(1); }
-        33%  { transform: translate(60px, -40px) scale(1.08); }
-        66%  { transform: translate(-30px, 50px) scale(0.95); }
-        100% { transform: translate(0px, 0px) scale(1); }
-    }
-    @keyframes drift2 {
-        0%   { transform: translate(0px, 0px) scale(1); }
-        33%  { transform: translate(-70px, 50px) scale(1.05); }
-        66%  { transform: translate(40px, -60px) scale(1.1); }
-        100% { transform: translate(0px, 0px) scale(1); }
-    }
-    @keyframes drift3 {
-        0%   { transform: translate(0px, 0px) scale(1); }
-        50%  { transform: translate(50px, 60px) scale(1.06); }
-        100% { transform: translate(0px, 0px) scale(1); }
-    }
-    @keyframes twinkle {
-        0%, 100% { opacity: 0.15; }
-        50%       { opacity: 0.55; }
-    }
-    @keyframes moveDots {
-        0%   { background-position: 0px 0px, 40px 40px; }
-        100% { background-position: 80px 80px, 120px 120px; }
-    }
-
-    /* Full screen fixed background layer */
-    .stApp::before {
-        content: '';
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        background: #020810;
-        pointer-events: none;
-    }
-
-    /* Animated star dots */
-    .stApp::after {
-        content: '';
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-        background-image:
-            radial-gradient(1px 1px at 15% 20%, rgba(200,230,255,0.35) 0%, transparent 100%),
-            radial-gradient(1px 1px at 72% 8%,  rgba(200,230,255,0.25) 0%, transparent 100%),
-            radial-gradient(1px 1px at 45% 55%, rgba(200,230,255,0.3)  0%, transparent 100%),
-            radial-gradient(1px 1px at 88% 35%, rgba(200,230,255,0.2)  0%, transparent 100%),
-            radial-gradient(1px 1px at 30% 78%, rgba(200,230,255,0.3)  0%, transparent 100%),
-            radial-gradient(1px 1px at 60% 90%, rgba(200,230,255,0.2)  0%, transparent 100%),
-            radial-gradient(1px 1px at 5%  60%, rgba(200,230,255,0.25) 0%, transparent 100%),
-            radial-gradient(1px 1px at 93% 72%, rgba(200,230,255,0.2)  0%, transparent 100%),
-            radial-gradient(1px 1px at 50% 30%, rgba(200,230,255,0.3)  0%, transparent 100%),
-            radial-gradient(1px 1px at 22% 45%, rgba(200,230,255,0.2)  0%, transparent 100%),
-            radial-gradient(1px 1px at 78% 60%, rgba(200,230,255,0.25) 0%, transparent 100%),
-            radial-gradient(1.5px 1.5px at 35% 15%, rgba(93,202,165,0.4) 0%, transparent 100%),
-            radial-gradient(1.5px 1.5px at 65% 80%, rgba(55,138,221,0.35) 0%, transparent 100%),
-            radial-gradient(2px 2px at 10% 90%,  rgba(93,202,165,0.3) 0%, transparent 100%),
-            radial-gradient(2px 2px at 90% 15%,  rgba(55,138,221,0.3) 0%, transparent 100%);
-        animation: twinkle 4s ease-in-out infinite alternate;
-    }
-
-    /* Aurora blob 1 — teal, top left */
-    #aurora1 {
-        position: fixed;
-        top: -10vh; left: -10vw;
-        width: 65vw; height: 60vh;
-        border-radius: 50%;
-        background: radial-gradient(ellipse at center,
-            rgba(93,202,165,0.055) 0%,
-            rgba(93,202,165,0.02) 45%,
-            transparent 70%);
-        pointer-events: none;
-        z-index: 0;
-        animation: drift1 18s ease-in-out infinite;
-        filter: blur(40px);
-    }
-
-    /* Aurora blob 2 — blue, right side */
-    #aurora2 {
-        position: fixed;
-        top: 20vh; right: -15vw;
-        width: 60vw; height: 70vh;
-        border-radius: 50%;
-        background: radial-gradient(ellipse at center,
-            rgba(55,138,221,0.05) 0%,
-            rgba(55,138,221,0.018) 45%,
-            transparent 70%);
-        pointer-events: none;
-        z-index: 0;
-        animation: drift2 22s ease-in-out infinite;
-        filter: blur(50px);
-    }
-
-    /* Aurora blob 3 — purple, bottom */
-    #aurora3 {
-        position: fixed;
-        bottom: -20vh; left: 20vw;
-        width: 70vw; height: 55vh;
-        border-radius: 50%;
-        background: radial-gradient(ellipse at center,
-            rgba(127,119,221,0.045) 0%,
-            rgba(127,119,221,0.015) 45%,
-            transparent 70%);
-        pointer-events: none;
-        z-index: 0;
-        animation: drift3 25s ease-in-out infinite;
-        filter: blur(45px);
-    }
-
-    /* Neural dot grid — subtle moving pattern */
-    #neural-grid {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-        background-image:
-            radial-gradient(circle, rgba(93,202,165,0.08) 1px, transparent 1px),
-            radial-gradient(circle, rgba(55,138,221,0.05) 1px, transparent 1px);
-        background-size: 80px 80px, 130px 130px;
-        animation: moveDots 12s linear infinite;
-        opacity: 0.6;
-    }
-
-    /* Make sure ALL content sits above background */
-    .stApp {
-        background: #020810 !important;
-    }
-    section[data-testid="stMain"],
-    .main .block-container {
-        position: relative !important;
-        z-index: 2 !important;
-        background: transparent !important;
-    }
-    section[data-testid="stSidebar"] {
-        position: relative !important;
-        z-index: 100 !important;
-        background: rgba(2,8,16,0.92) !important;
-        backdrop-filter: blur(14px) !important;
-        border-right: 1px solid rgba(93,202,165,0.08) !important;
-    }
-    header[data-testid="stHeader"] {
-        position: relative !important;
-        z-index: 100 !important;
-        background: rgba(2,8,16,0.7) !important;
-        backdrop-filter: blur(10px) !important;
-    }
+    .stApp { background: #020810 !important; }
+    section[data-testid="stSidebar"] { background: #020810 !important; border-right: 1px solid #0d2137 !important; }
+    .main .block-container { position: relative; z-index: 1; }
+    header[data-testid="stHeader"] { background: transparent !important; }
     </style>
-
-    <!-- Aurora blobs injected as real DOM elements — no iframe -->
-    <div id="aurora1"></div>
-    <div id="aurora2"></div>
-    <div id="aurora3"></div>
-    <div id="neural-grid"></div>
     """, unsafe_allow_html=True)
+
+    components.html("""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin:0; padding:0; }
+html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
+canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const COLORS = {
+    bg: '#020810',
+    nodeCore: '#5DCAA5',
+    nodeGlow: 'rgba(93,202,165,',
+    edgePrimary: 'rgba(55,138,221,',
+    edgeSecondary: 'rgba(93,202,165,',
+    particle: 'rgba(127,119,221,',
+    pulse: 'rgba(93,202,165,',
+    hub: '#378ADD',
+    hubGlow: 'rgba(55,138,221,'
+};
+
+const NODE_COUNT = 55;
+const HUB_COUNT = 6;
+
+class Node {
+    constructor(isHub = false) {
+        this.x = Math.random() * W;
+        this.y = Math.random() * H;
+        this.vx = (Math.random() - 0.5) * (isHub ? 0.2 : 0.38);
+        this.vy = (Math.random() - 0.5) * (isHub ? 0.2 : 0.38);
+        this.isHub = isHub;
+        this.r = isHub ? Math.random() * 4 + 5 : Math.random() * 2 + 1.5;
+        this.baseR = this.r;
+        this.phase = Math.random() * Math.PI * 2;
+        this.speed = Math.random() * 0.02 + 0.008;
+        this.pulseAmp = isHub ? 3 : 1.2;
+        this.alpha = Math.random() * 0.4 + 0.6;
+    }
+    update(t) {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < -50) this.x = W + 50;
+        if (this.x > W + 50) this.x = -50;
+        if (this.y < -50) this.y = H + 50;
+        if (this.y > H + 50) this.y = -50;
+        this.r = this.baseR + Math.sin(t * this.speed + this.phase) * this.pulseAmp;
+    }
+    draw(ctx) {
+        const glowSize = this.r * (this.isHub ? 5 : 3.5);
+        const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowSize);
+        const col = this.isHub ? COLORS.hubGlow : COLORS.nodeGlow;
+        grad.addColorStop(0, col + (this.isHub ? '0.35)' : '0.25)'));
+        grad.addColorStop(0.4, col + '0.08)');
+        grad.addColorStop(1, col + '0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = this.isHub ? COLORS.hub : COLORS.nodeCore;
+        ctx.globalAlpha = this.alpha;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        if (this.isHub) {
+            ctx.beginPath();
+            ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(200,240,255,0.6)';
+            ctx.fill();
+        }
+    }
+}
+
+class Particle {
+    constructor(from, to) {
+        this.from = from;
+        this.to = to;
+        this.t = Math.random();
+        this.speed = Math.random() * 0.004 + 0.002;
+        this.size = Math.random() * 2 + 1;
+        this.alpha = Math.random() * 0.7 + 0.3;
+        this.color = Math.random() > 0.5 ? COLORS.particle : COLORS.edgePrimary;
+    }
+    update() { this.t += this.speed; if (this.t > 1) this.t = 0; }
+    draw(ctx) {
+        const x = this.from.x + (this.to.x - this.from.x) * this.t;
+        const y = this.from.y + (this.to.y - this.from.y) * this.t;
+        ctx.beginPath();
+        ctx.arc(x, y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color + this.alpha + ')';
+        ctx.fill();
+    }
+}
+
+class PulseRing {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.r = 0;
+        this.maxR = Math.random() * 80 + 60;
+        this.speed = Math.random() * 0.8 + 0.4;
+        this.alpha = 0.5;
+        this.done = false;
+    }
+    update() {
+        this.r += this.speed;
+        this.alpha = 0.5 * (1 - this.r / this.maxR);
+        if (this.r >= this.maxR) this.done = true;
+    }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.strokeStyle = COLORS.pulse + this.alpha + ')';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+}
+
+const nodes = [];
+for (let i = 0; i < HUB_COUNT; i++) nodes.push(new Node(true));
+for (let i = 0; i < NODE_COUNT - HUB_COUNT; i++) nodes.push(new Node(false));
+
+const MAX_DIST = 180;
+const MAX_HUB_DIST = 280;
+const particles = [];
+const pulseRings = [];
+
+function refreshParticles() {
+    particles.length = 0;
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            const ni = nodes[i], nj = nodes[j];
+            const dx = ni.x - nj.x, dy = ni.y - nj.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            const maxD = (ni.isHub || nj.isHub) ? MAX_HUB_DIST : MAX_DIST;
+            if (d < maxD && (ni.isHub || nj.isHub)) {
+                if (Math.random() > 0.4) particles.push(new Particle(ni, nj));
+            }
+        }
+    }
+}
+refreshParticles();
+setInterval(refreshParticles, 4000);
+
+setInterval(() => {
+    const hub = nodes[Math.floor(Math.random() * HUB_COUNT)];
+    pulseRings.push(new PulseRing(hub.x, hub.y));
+}, 1200);
+
+let frame = 0;
+function draw() {
+    frame++;
+    ctx.fillStyle = 'rgba(2,8,16,0.18)';
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = pulseRings.length - 1; i >= 0; i--) {
+        pulseRings[i].update();
+        pulseRings[i].draw(ctx);
+        if (pulseRings[i].done) pulseRings.splice(i, 1);
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            const ni = nodes[i], nj = nodes[j];
+            const dx = ni.x - nj.x, dy = ni.y - nj.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            const maxD = (ni.isHub || nj.isHub) ? MAX_HUB_DIST : MAX_DIST;
+            if (d < maxD) {
+                const alpha = (1 - d / maxD) * (ni.isHub || nj.isHub ? 0.55 : 0.22);
+                const isHubEdge = ni.isHub || nj.isHub;
+                ctx.strokeStyle = (isHubEdge ? COLORS.edgePrimary : COLORS.edgeSecondary) + alpha + ')';
+                ctx.lineWidth = isHubEdge ? 1.2 : 0.6;
+                ctx.beginPath();
+                ctx.moveTo(ni.x, ni.y);
+                ctx.lineTo(nj.x, nj.y);
+                ctx.stroke();
+            }
+        }
+    }
+
+    particles.forEach(p => { p.update(); p.draw(ctx); });
+
+    nodes.sort((a,b) => a.isHub - b.isHub);
+    nodes.forEach(n => { n.update(frame); n.draw(ctx); });
+
+    requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
+    """, height=1, scrolling=False)
+
+    st.markdown("""
+<style>
+iframe {
+    border: none !important;
+}
+
+div[data-testid="stIFrame"]:first-of-type iframe,
+div.stHtml iframe:first-of-type,
+[data-testid="stMain"] iframe:first-of-type {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+
+div[data-testid="stIFrame"]:first-of-type,
+div.stHtml:first-of-type {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+.main .block-container {
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+}
+
+section[data-testid="stSidebar"] {
+    z-index: 10 !important;
+    background: rgba(2, 8, 16, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+header[data-testid="stHeader"] {
+    z-index: 10 !important;
+    background: rgba(2, 8, 16, 0.7) !important;
+    backdrop-filter: blur(8px) !important;
+}
+
+.stApp {
+    background: #020810 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 def render_floating_chatbot():
     groq_key = ""
@@ -213,158 +368,248 @@ def render_floating_chatbot():
         pass
 
     components.html(f"""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-html,body{{background:transparent;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,sans-serif}}
-#bbl{{
-  position:fixed;bottom:24px;right:24px;width:54px;height:54px;
-  border-radius:50%;background:linear-gradient(135deg,#5DCAA5,#378ADD);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  box-shadow:0 0 0 0 rgba(93,202,165,0.5);
-  animation:pulse 2.5s ease-in-out infinite;z-index:999;transition:transform .2s;
-}}
-@keyframes pulse{{
-  0%{{box-shadow:0 0 0 0 rgba(93,202,165,0.5)}}
-  70%{{box-shadow:0 0 0 14px rgba(93,202,165,0)}}
-  100%{{box-shadow:0 0 0 0 rgba(93,202,165,0)}}
-}}
-#bbl:hover{{transform:scale(1.1)}}
-#bbl svg{{width:25px;height:25px;fill:white}}
-#win{{
-  position:fixed;bottom:88px;right:24px;width:345px;height:490px;
-  background:#0D1117;border:1px solid #30363D;border-radius:16px;
-  display:none;flex-direction:column;
-  box-shadow:0 25px 80px rgba(0,0,0,0.85),0 0 50px rgba(93,202,165,0.08);
-  z-index:998;overflow:hidden;
-}}
-#win.open{{display:flex;animation:slideUp .25s ease}}
-@keyframes slideUp{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}
-#hdr{{
-  padding:13px 15px;flex-shrink:0;
-  background:linear-gradient(135deg,#0d2137 0%,#0D1117 100%);
-  border-bottom:1px solid #21262D;
-  display:flex;align-items:center;justify-content:space-between;
-}}
-.hl{{display:flex;align-items:center;gap:9px}}
-.av{{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#5DCAA5,#378ADD);display:flex;align-items:center;justify-content:center;font-size:15px}}
-.tt{{color:#E6EDF3;font-size:13px;font-weight:600}}
-.sb{{color:#5DCAA5;font-size:10px;margin-top:1px}}
-.cl{{color:#7D8590;cursor:pointer;font-size:22px;line-height:1;padding:2px 6px;border-radius:4px}}
-.cl:hover{{color:#E6EDF3;background:#21262D}}
-#msgs{{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#30363D transparent}}
-.m{{max-width:87%;padding:8px 12px;border-radius:11px;font-size:12.5px;line-height:1.55;word-wrap:break-word}}
-.u{{background:#1F6FEB22;border:1px solid #1F6FEB55;color:#E6EDF3;align-self:flex-end;border-bottom-right-radius:3px}}
-.b{{background:#161B22;border:1px solid #30363D;color:#C9D1D9;align-self:flex-start;border-bottom-left-radius:3px}}
-.t{{color:#7D8590;font-style:italic}}
-.qw{{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 10px;flex-shrink:0}}
-.qb{{font-size:10.5px;padding:3px 10px;background:#21262D;border:1px solid #30363D;border-radius:99px;color:#8B949E;cursor:pointer;transition:all .15s;white-space:nowrap}}
-.qb:hover{{background:#2D333B;color:#E6EDF3;border-color:#5DCAA5}}
-#ia{{padding:10px 12px;border-top:1px solid #21262D;display:flex;gap:7px;flex-shrink:0;background:#0a0f14}}
-#inp{{flex:1;background:#21262D;border:1px solid #30363D;border-radius:8px;color:#E6EDF3;padding:7px 11px;font-size:12px;outline:none;resize:none;height:36px;font-family:inherit}}
-#inp:focus{{border-color:#5DCAA5;box-shadow:0 0 0 2px rgba(93,202,165,0.1)}}
-#inp::placeholder{{color:#7D8590}}
-#snd{{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#5DCAA5,#378ADD);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}}
-#snd:hover{{opacity:0.85}}
-#snd svg{{width:15px;height:15px;fill:white}}
-</style>
-</head>
-<body>
-<div id="bbl" onclick="tog()">
-  <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
-</div>
-<div id="win">
-  <div id="hdr">
-    <div class="hl">
-      <div class="av">🧠</div>
-      <div><div class="tt">ML Mentor</div><div class="sb">● online · roadmap-scoped</div></div>
+    <style>
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{ background: transparent; overflow: hidden; font-family: -apple-system, sans-serif; }}
+
+    #bubble {{
+        position: fixed;
+        bottom: 24px; right: 24px;
+        width: 52px; height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #5DCAA5 0%, #378ADD 100%);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 24px rgba(93,202,165,0.45);
+        transition: transform .2s, box-shadow .2s;
+        z-index: 999;
+    }}
+    #bubble:hover {{ transform: scale(1.1); box-shadow: 0 6px 32px rgba(93,202,165,0.65); }}
+    #bubble svg {{ width: 24px; height: 24px; fill: white; }}
+
+    #win {{
+        position: fixed;
+        bottom: 86px; right: 24px;
+        width: 340px; height: 480px;
+        background: #161B22;
+        border: 1px solid #30363D;
+        border-radius: 14px;
+        display: none; flex-direction: column;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+        z-index: 998;
+        overflow: hidden;
+    }}
+    #win.open {{ display: flex; }}
+
+    #hdr {{
+        padding: 12px 14px;
+        background: #0D1117;
+        border-bottom: 1px solid #21262D;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-shrink: 0;
+    }}
+    .hdr-l {{ display: flex; align-items: center; gap: 9px; }}
+    .av {{
+        width: 30px; height: 30px; border-radius: 50%;
+        background: linear-gradient(135deg, #5DCAA5, #378ADD);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px;
+    }}
+    .ttl {{ color: #E6EDF3; font-size: 13px; font-weight: 600; }}
+    .sub {{ color: #7D8590; font-size: 10px; }}
+    .cls {{ color: #7D8590; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; }}
+    .cls:hover {{ color: #E6EDF3; background: #21262D; }}
+
+    #msgs {{
+        flex: 1; overflow-y: auto; padding: 12px;
+        display: flex; flex-direction: column; gap: 8px;
+        scrollbar-width: thin; scrollbar-color: #30363D transparent;
+    }}
+    .m {{
+        max-width: 86%; padding: 8px 12px; border-radius: 10px;
+        font-size: 12.5px; line-height: 1.5; word-wrap: break-word;
+    }}
+    .m.u {{
+        background: #1F6FEB22; border: 1px solid #1F6FEB44;
+        color: #E6EDF3; align-self: flex-end; border-bottom-right-radius: 3px;
+    }}
+    .m.b {{
+        background: #21262D; border: 1px solid #30363D;
+        color: #C9D1D9; align-self: flex-start; border-bottom-left-radius: 3px;
+    }}
+    .m.t {{ color: #7D8590; font-style: italic; }}
+
+    .qw {{ display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 8px; flex-shrink: 0; }}
+    .qb {{
+        font-size: 10.5px; padding: 3px 9px;
+        background: #21262D; border: 1px solid #30363D;
+        border-radius: 99px; color: #8B949E; cursor: pointer;
+        transition: all .15s; white-space: nowrap;
+    }}
+    .qb:hover {{ background: #2D333B; color: #E6EDF3; border-color: #5DCAA5; }}
+
+    #inp-area {{
+        padding: 10px 12px; border-top: 1px solid #21262D;
+        display: flex; gap: 7px; flex-shrink: 0; background: #0D1117;
+    }}
+    #inp {{
+        flex: 1; background: #21262D; border: 1px solid #30363D;
+        border-radius: 7px; color: #E6EDF3; padding: 7px 11px;
+        font-size: 12px; outline: none; resize: none; height: 36px;
+    }}
+    #inp:focus {{ border-color: #5DCAA5; }}
+    #inp::placeholder {{ color: #7D8590; }}
+    #snd {{
+        width: 36px; height: 36px; border-radius: 7px;
+        background: linear-gradient(135deg, #5DCAA5, #378ADD);
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }}
+    #snd:hover {{ opacity: 0.85; }}
+    #snd svg {{ width: 15px; height: 15px; fill: white; }}
+    </style>
+
+    <div id="bubble" onclick="toggle()">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
     </div>
-    <div class="cl" onclick="tog()">×</div>
-  </div>
-  <div id="msgs">
-    <div class="m b">Hey Likith! 👋 Ask me anything about the roadmap — concepts, projects, interview prep, or study planning.</div>
-  </div>
-  <div class="qw" id="qw">
-    <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
-    <span class="qb" onclick="sq('What to do in week 1?')">Week 1 plan</span>
-    <span class="qb" onclick="sq('Walk me through tabular-baseline project')">tabular-baseline</span>
-    <span class="qb" onclick="sq('Explain KV cache and why it matters')">KV cache</span>
-    <span class="qb" onclick="sq('Quiz me on transformer attention')">Quiz me ⚡</span>
-  </div>
-  <div id="ia">
-    <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
-    <button id="snd" onclick="send()">
-      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
-    </button>
-  </div>
-</div>
-<script>
-const KEY="{groq_key}";
-const SYS=`You are an ML roadmap mentor for Likith. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it with: "I can only help with the ML roadmap topics!" Roadmap: Math (linear algebra, calculus, probability), Python toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, LightGBM, clustering, PCA), Neural nets+PyTorch (backprop, optimizers, training loop, DataLoader), Deep Learning (CNNs ResNet, LSTMs, Transformers self-attention RoPE, ViT, Diffusion), Training at scale (mixed precision, DDP, FSDP, DeepSpeed, Accelerate), HuggingFace (tokenization, AutoModel, peft LoRA QLoRA, trl SFT DPO GRPO), RAG (chunking, qdrant, hybrid BM25+dense, reranking, ragas), LLM internals (Flash Attention, KV cache, quantization GPTQ AWQ, speculative decoding), vllm serving, MLOps (DVC, mlflow, drift Evidently, Langfuse), Agents (LangGraph, MCP, guardrails). Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise under 250 words, practical, use short code examples.`;
-let msgs=[],isOpen=false;
-function tog(){{isOpen=!isOpen;document.getElementById('win').classList.toggle('open',isOpen);if(isOpen)document.getElementById('inp').focus();}}
-function sq(t){{document.getElementById('inp').value=t;send();}}
-function send(){{
-  const el=document.getElementById('inp');
-  const txt=el.value.trim();if(!txt)return;
-  el.value='';add(txt,'u');msgs.push({{role:'user',content:txt}});
-  document.getElementById('qw').style.display='none';
-  const th=add('Thinking...','b t');
-  if(!KEY){{th.remove();add('⚠️ Add GROQ_API_KEY to Streamlit secrets.','b');return;}}
-  fetch('https://api.groq.com/openai/v1/chat/completions',{{
-    method:'POST',
-    headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
-    body:JSON.stringify({{model:'llama-3.3-70b-versatile',max_tokens:500,
-      messages:[{{role:'system',content:SYS}},...msgs]}})
-  }}).then(r=>r.json()).then(d=>{{
-    th.remove();
-    const rep=d.choices?.[0]?.message?.content||'Something went wrong, try again.';
-    add(rep,'b');msgs.push({{role:'assistant',content:rep}});
-  }}).catch(()=>{{th.remove();add('Network error. Check connection.','b');}});
-}}
-function add(txt,cls){{
-  const el=document.createElement('div');el.className='m '+cls;el.textContent=txt;
-  const c=document.getElementById('msgs');c.appendChild(el);c.scrollTop=c.scrollHeight;return el;
-}}
-document.getElementById('inp').addEventListener('keydown',e=>{{
-  if(e.key==='Enter'&&!e.shiftKey){{e.preventDefault();send();}};
-}});
-</script>
-</body>
-</html>
+
+    <div id="win">
+        <div id="hdr">
+            <div class="hdr-l">
+                <div class="av">🧠</div>
+                <div><div class="ttl">ML Mentor</div><div class="sub">Roadmap-scoped · llama-3.3-70b</div></div>
+            </div>
+            <div class="cls" onclick="toggle()">×</div>
+        </div>
+        <div id="msgs">
+            <div class="m b">Hey! Ask me about any concept, project, or resource in the roadmap 👋</div>
+        </div>
+        <div class="qw" id="qw">
+            <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
+            <span class="qb" onclick="sq('What to do in week 1?')">Week 1</span>
+            <span class="qb" onclick="sq('Walk me through tabular-baseline')">tabular-baseline</span>
+            <span class="qb" onclick="sq('Explain KV cache')">KV cache</span>
+            <span class="qb" onclick="sq('Quiz me on attention')">Quiz me</span>
+        </div>
+        <div id="inp-area">
+            <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
+            <button id="snd" onclick="send()">
+                <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+    const KEY = "{groq_key}";
+    const SYS = `You are an ML roadmap mentor. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it with: "I'm your roadmap mentor — ask me about the ML roadmap topics only!"
+
+Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, LightGBM, clustering, PCA), Neural nets + PyTorch (backprop, optimizers, training loop, DataLoader, checkpoints), Deep Learning (CNNs ResNet EfficientNet, LSTMs, Transformers self-attention multi-head RoPE ALiBi, ViT, Diffusion DDPM), Training at scale (mixed precision bf16 fp16, DDP FSDP DeepSpeed ZeRO, Accelerate), NLP + HuggingFace (BPE tokenization, AutoModel AutoTokenizer, peft LoRA QLoRA, trl SFT DPO GRPO), RAG (chunking, qdrant vector DB, hybrid BM25+dense, reranking, ragas eval), LLM internals (Flash Attention, KV cache, quantization GPTQ AWQ GGUF, speculative decoding), vllm serving, MLOps (DVC mlflow drift Evidently Langfuse), Agents (LangGraph MCP tool-calling guardrails). Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise (under 250 words), practical, use short code examples.`;
+
+    let msgs = [];
+    let open = false;
+
+    function toggle() {{
+        open = !open;
+        document.getElementById('win').classList.toggle('open', open);
+        if (open) document.getElementById('inp').focus();
+    }}
+
+    function sq(t) {{ document.getElementById('inp').value = t; send(); }}
+
+    function send() {{
+        const inp = document.getElementById('inp');
+        const txt = inp.value.trim();
+        if (!txt) return;
+        inp.value = '';
+        add(txt, 'u');
+        msgs.push({{role:'user', content:txt}});
+        document.getElementById('qw').style.display = 'none';
+        const th = add('Thinking...', 'b t');
+        if (!KEY) {{ th.remove(); add('⚠️ No GROQ_API_KEY in Streamlit secrets.', 'b'); return; }}
+        fetch('https://api.groq.com/openai/v1/chat/completions', {{
+            method:'POST',
+            headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
+            body:JSON.stringify({{model:'llama-3.3-70b-versatile', max_tokens:500,
+                messages:[{{role:'system',content:SYS}},...msgs]}})
+        }})
+        .then(r=>r.json())
+        .then(d=>{{
+            th.remove();
+            const rep = d.choices?.[0]?.message?.content || 'Sorry, something went wrong.';
+            add(rep,'b');
+            msgs.push({{role:'assistant',content:rep}});
+        }})
+        .catch(()=>{{ th.remove(); add('Network error.','b'); }});
+    }}
+
+    function add(txt, cls) {{
+        const el = document.createElement('div');
+        el.className = 'm '+cls;
+        el.textContent = txt;
+        const c = document.getElementById('msgs');
+        c.appendChild(el);
+        c.scrollTop = c.scrollHeight;
+        return el;
+    }}
+
+    document.getElementById('inp').addEventListener('keydown', e=>{{
+        if (e.key==='Enter' && !e.shiftKey) {{ e.preventDefault(); send(); }}
+    }});
+    </script>
     """, height=1, scrolling=False)
 
     st.markdown("""
-    <style>
-    /* Collapse chatbot iframe container completely */
-    div:has(iframe):last-of-type {
-        height: 0 !important;
-        min-height: 0 !important;
-        max-height: 0 !important;
-        overflow: visible !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        line-height: 0 !important;
-    }
-    div:has(iframe):last-of-type iframe {
-        position: fixed !important;
-        bottom: 0 !important;
-        right: 0 !important;
-        top: auto !important;
-        left: auto !important;
-        width: 400px !important;
-        height: 560px !important;
-        z-index: 9999 !important;
-        border: none !important;
-        pointer-events: all !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+div[data-testid="stIFrame"]:nth-of-type(2) iframe,
+div.stHtml:nth-of-type(2) iframe,
+[data-testid="stMain"] iframe:nth-of-type(2) {
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    left: auto !important;
+    width: 420px !important;
+    height: 600px !important;
+    z-index: 9999 !important;
+    pointer-events: all !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    max-width: none !important;
+}
+
+div[data-testid="stIFrame"]:nth-of-type(2),
+div.stHtml:nth-of-type(2) {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 render_animated_background()
 render_floating_chatbot()
+
+# Collapse containers holding both iframes so they take zero layout space
+st.markdown("""
+<style>
+section[data-testid="stMain"] .block-container > div > div:nth-child(1),
+section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+section[data-testid="stMain"] .block-container > div > div:nth-child(1) iframe,
+section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ── First-load toast ──────────────────────────────────────────────────────────
 if "welcomed" not in st.session_state:
@@ -1201,32 +1446,24 @@ RES_COLORS = {
     "WEB":    ("#0D1F33", "#5BA4D4", "🌐"),
 }
 
-# ── CSS ─────────────────────────────────────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-:root {
-    --bg-deep:   #020810;
-    --bg-card:   #161B22;
-    --bg-raised: #1C2128;
-    --border:    #21262D;
-    --border-hi: #30363D;
-    --text-hi:   #E6EDF3;
-    --text-mid:  #C9D1D9;
-    --text-lo:   #8B949E;
-    --teal:      #5DCAA5;
-    --blue:      #378ADD;
-    --purple:    #7F77DD;
-    --r:         12px;
-    --r-sm:      8px;
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
 }
 
-html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
-
-section[data-testid="stAppViewContainer"] { background: transparent !important; }
-section[data-testid="stAppViewContainer"] > div:first-child { background: transparent !important; }
-.stApp { background: var(--bg-deep) !important; }
+section[data-testid="stAppViewContainer"] {
+    background: transparent !important;
+}
+section[data-testid="stAppViewContainer"] > div:first-child {
+    background: transparent !important;
+}
+.stApp {
+    background: #0D1117 !important;
+}
 
 .main .block-container {
     padding-top: 1.5rem;
@@ -1234,233 +1471,147 @@ section[data-testid="stAppViewContainer"] > div:first-child { background: transp
     max-width: 1100px;
 }
 
-/* ─── Cards ──────────────────────────────────── */
+/* Cards */
 .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-radius: 12px;
     padding: 1rem 1.2rem;
     margin-bottom: .75rem;
-    transition: border-color .2s, box-shadow .2s;
 }
-.card:hover { border-color: var(--border-hi); box-shadow: 0 4px 20px rgba(0,0,0,.35); }
 
-/* ─── Phase pills ─────────────────────────── */
-.phase-header { display: flex; align-items: center; gap: 12px; margin: 1.5rem 0 1rem; }
+.phase-header {
+    display: flex; align-items: center; gap: 12px;
+    margin: 1.5rem 0 1rem;
+}
 .phase-pill {
-    font-size: 10px; font-weight: 700;
-    padding: 5px 16px; border-radius: 99px;
-    letter-spacing: .12em; text-transform: uppercase;
-    background: transparent; border: 1.5px solid;
-    display: inline-block;
-    font-family: 'Outfit', sans-serif;
+    font-size: 11px; font-weight: 600; padding: 3px 12px;
+    border-radius: 99px; letter-spacing: .04em;
 }
-
-/* ─── Section divider ─────────────────────── */
 .section-divider {
-    font-size: 10px; font-weight: 700; color: var(--text-lo);
-    letter-spacing: .1em; text-transform: uppercase;
-    margin: 1.4rem 0 .6rem;
-    padding: 0 0 6px 10px;
-    border-bottom: 1px solid var(--border);
-    position: relative;
+    font-size: 11px; font-weight: 600; color: #8B949E;
+    letter-spacing: .07em; text-transform: uppercase;
+    margin: 1.2rem 0 .4rem; padding-bottom: 4px;
+    border-bottom: 1px solid #21262D;
 }
-.section-divider::before {
-    content: ''; position: absolute; left: 0; top: 0;
-    width: 3px; height: 14px;
-    background: var(--teal); border-radius: 2px;
-}
-
-/* ─── Topics ────────────────────────────────── */
 .topic-row {
     display: grid; grid-template-columns: 1.6fr 1fr;
-    border-bottom: 1px solid var(--border); padding: 8px 0;
+    border-bottom: 1px solid #21262D; padding: 8px 0;
     align-items: center; gap: 12px;
 }
-.topic-name { font-size: 13.5px; font-weight: 500; color: var(--text-hi); }
-.topic-sub  { font-size: 11px; color: var(--text-lo); margin-top: 2px; }
-
-/* ─── Resource badge ──────────────────────── */
-.res-badge {
+.topic-name { font-size: 13.5px; font-weight: 500; color: #E6EDF3; }
+.topic-sub  { font-size: 11px; color: #8B949E; margin-top: 2px; }
+.res-badge  {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; padding: 4px 10px; border-radius: 6px;
     text-decoration: none; font-weight: 500; width: fit-content;
-    transition: filter .15s, transform .1s;
 }
-.res-badge:hover { filter: brightness(1.18); transform: translateY(-1px); }
-
-/* ─── Project cards ───────────────────────── */
 .proj-card {
-    border: 1px solid var(--border); border-radius: var(--r);
+    border: 1px solid #21262D; border-radius: 12px;
     padding: 1rem 1.2rem; margin-bottom: .75rem;
-    background: var(--bg-card);
-    transition: border-color .2s, box-shadow .2s, transform .15s;
+    background: #161B22;
 }
-.proj-card:hover {
-    border-color: var(--teal);
-    box-shadow: 0 4px 24px rgba(93,202,165,.12);
-    transform: translateY(-1px);
-}
-.proj-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--text-hi); }
-.proj-desc  { font-size: 13px; color: var(--text-lo); line-height: 1.55; margin-bottom: 8px; }
-
-/* ─── Tags ──────────────────────────────────────── */
+.proj-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: #E6EDF3; }
+.proj-desc  { font-size: 13px; color: #8B949E; line-height: 1.5; margin-bottom: 8px; }
 .tag {
     display: inline-block; font-size: 11px; padding: 2px 8px;
-    border-radius: 4px; background: var(--bg-raised); color: var(--text-lo);
+    border-radius: 6px; background: #21262D; color: #8B949E;
     margin-right: 4px; margin-bottom: 2px;
-    font-family: 'JetBrains Mono', monospace;
-    border: 1px solid var(--border);
 }
-
-/* ─── Milestones ─────────────────────────────── */
 .milestone-item {
-    font-size: 13px; color: var(--text-mid); padding: 5px 0;
-    border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start;
+    font-size: 13px; color: #C9D1D9; padding: 5px 0;
+    border-bottom: 1px solid #21262D; display: flex; gap: 8px; align-items: flex-start;
 }
-
-/* ─── Interview Q-cards ───────────────────── */
 .q-card {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r);
-    padding: 10px 14px; font-size: 13px; color: var(--text-mid);
+    background: #161B22; border: 1px solid #21262D; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; color: #C9D1D9;
     margin-bottom: 6px;
-    transition: border-color .2s, box-shadow .2s;
 }
-.q-card:hover { border-color: var(--blue); box-shadow: 0 2px 12px rgba(55,138,221,.1); }
-
-/* ─── Mental model cards ──────────────────── */
 .mental-card {
-    border: 1px solid var(--border); border-radius: var(--r);
+    border: 1px solid #21262D; border-radius: 10px;
     padding: .85rem 1rem; margin-bottom: .6rem;
-    background: var(--bg-card);
-    transition: border-color .2s, box-shadow .2s;
+    background: #161B22;
 }
-.mental-card:hover { border-color: var(--purple); box-shadow: 0 2px 16px rgba(127,119,221,.1); }
-.mental-title { font-size: 14px; font-weight: 600; color: var(--text-hi); margin-bottom: 3px; }
-.mental-body  { font-size: 13px; color: var(--text-lo); line-height: 1.5; }
-
-/* ─── Stat boxes ─────────────────────────────── */
+.mental-title { font-size: 14px; font-weight: 600; color: #E6EDF3; margin-bottom: 3px; }
+.mental-body  { font-size: 13px; color: #8B949E; line-height: 1.5; }
 .stat-box {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r);
+    background: #161B22; border: 1px solid #21262D; border-radius: 10px;
     padding: 1rem; text-align: center;
-    transition: border-color .2s, box-shadow .2s, transform .15s;
 }
-.stat-box:hover {
-    border-color: var(--teal);
-    box-shadow: 0 4px 20px rgba(93,202,165,.1);
-    transform: translateY(-2px);
-}
-.stat-val   { font-size: 28px; font-weight: 700; color: var(--text-hi); }
-.stat-label { font-size: 12px; color: var(--text-lo); margin-top: 2px; letter-spacing: .03em; }
+.stat-val   { font-size: 26px; font-weight: 600; color: #E6EDF3; }
+.stat-label { font-size: 12px; color: #8B949E; margin-top: 2px; }
 
-/* ─── Progress ring (big %) ─────────────────── */
+/* Big progress ring card */
 .progress-ring-card {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r);
-    padding: 2rem 1.2rem; text-align: center; margin-bottom: 1rem;
-    position: relative; overflow: hidden;
-}
-.progress-ring-card::before {
-    content: ''; position: absolute; inset: 0;
-    background: radial-gradient(circle at 50% 0%, rgba(93,202,165,.06) 0%, transparent 65%);
-    pointer-events: none;
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-radius: 12px;
+    padding: 2rem 1.2rem;
+    text-align: center;
+    margin-bottom: 1rem;
 }
 .progress-pct {
-    font-size: 72px; font-weight: 700; color: var(--teal); line-height: 1;
-    text-shadow: 0 0 40px rgba(93,202,165,.35);
-    position: relative; z-index: 1;
+    font-size: 64px;
+    font-weight: 700;
+    color: #5DCAA5;
+    line-height: 1;
 }
-.progress-sub { font-size: 14px; color: var(--text-lo); margin-top: 8px; position: relative; z-index: 1; }
+.progress-sub {
+    font-size: 14px;
+    color: #8B949E;
+    margin-top: 6px;
+}
 
-/* ─── Quote card ──────────────────────────────── */
+/* Quote card */
 .quote-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-left: 3px solid var(--teal); border-radius: var(--r);
-    padding: 1rem 1.2rem; margin-bottom: 1.2rem;
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-left: 3px solid #5DCAA5;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.2rem;
 }
-.quote-label { font-size: 10px; font-weight: 700; color: var(--teal); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
-.quote-text  { font-size: 16px; font-style: italic; color: var(--text-hi); line-height: 1.6; }
-.quote-author { font-size: 13px; color: var(--text-lo); margin-top: 6px; }
+.quote-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #5DCAA5;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.quote-text {
+    font-size: 16px;
+    font-style: italic;
+    color: #E6EDF3;
+    line-height: 1.5;
+}
+.quote-author {
+    font-size: 13px;
+    color: #8B949E;
+    margin-top: 6px;
+}
 
-/* ─── Tip box ───────────────────────────────────── */
+/* Phase tip box */
 .tip-box {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-left: 3px solid var(--blue); border-radius: var(--r);
-    padding: .75rem 1rem; margin-bottom: 1rem;
-    font-size: 13px; color: var(--text-mid); line-height: 1.5;
+    background: #161B22;
+    border: 1px solid #21262D;
+    border-radius: 10px;
+    padding: .75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 13px;
+    color: #C9D1D9;
+    line-height: 1.5;
 }
 
-/* ─── Phase progress bars (custom HTML) ─────────── */
-@keyframes shimmer {
-    0%   { background-position: -200% center; }
-    100% { background-position:  200% center; }
-}
-.phase-bar-wrap  { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.phase-bar-label { font-size: 13px; font-weight: 600; min-width: 100px; }
-.phase-bar-track { flex: 1; background: var(--border); border-radius: 99px; height: 10px; overflow: hidden; }
-.phase-bar-fill  { height: 10px; border-radius: 99px; background-size: 200% auto; animation: shimmer 2.5s linear infinite; }
-.phase-bar-count { font-size: 12px; color: var(--text-lo); min-width: 90px; text-align: right; }
-
-/* ─── Native st.progress styling ──────────────── */
-div[data-testid="stProgress"] { padding: 0 !important; }
-div[data-testid="stProgress"] > div {
-    background: var(--border) !important; border-radius: 99px !important;
-    height: 6px !important; overflow: hidden !important;
-}
-div[data-testid="stProgress"] > div > div {
-    background: linear-gradient(90deg, var(--teal) 0%, var(--blue) 100%) !important;
-    border-radius: 99px !important;
-    box-shadow: 0 0 6px rgba(93,202,165,.4) !important;
-}
-
-/* ─── Month cards ─────────────────────────────── */
+/* Month cards on overview */
 .month-card {
-    border-radius: 0 var(--r) var(--r) 0;
-    background: var(--bg-card); margin-bottom: .75rem;
-    padding: .75rem 1rem; border: 1px solid var(--border);
-    transition: transform .15s;
-}
-.month-card:hover { transform: translateX(2px); }
-
-/* ─── Sidebar nav ─────────────────────────────── */
-section[data-testid="stSidebar"] .stRadio > div {
-    display: flex; flex-direction: column; gap: 2px;
-}
-section[data-testid="stSidebar"] .stRadio label {
-    display: flex !important; align-items: center !important;
-    padding: 8px 12px !important; border-radius: 8px !important;
-    font-size: 13px !important; font-weight: 500 !important;
-    color: var(--text-lo) !important; cursor: pointer !important;
-    transition: background .15s, color .15s, border-color .15s !important;
-    border: 1px solid transparent !important;
-    margin: 0 !important;
-}
-section[data-testid="stSidebar"] .stRadio label:hover {
-    background: var(--bg-card) !important; color: var(--text-hi) !important;
-}
-section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
-    background: rgba(93,202,165,.08) !important;
-    color: var(--teal) !important;
-    border-color: rgba(93,202,165,.2) !important;
-}
-section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child,
-section[data-testid="stSidebar"] .stRadio label > span:first-child { display: none !important; }
-
-/* ─── Buttons ───────────────────────────────────── */
-.stButton > button {
-    border-radius: var(--r-sm) !important;
-    font-family: 'Outfit', sans-serif !important;
-    font-weight: 500 !important;
+    border-radius: 0 8px 8px 0;
+    background: #161B22;
+    margin-bottom: .75rem;
+    padding: .75rem 1rem;
 }
 
-/* ─── Mobile ──────────────────────────────────────── */
-@media (max-width: 768px) {
-    .topic-row { grid-template-columns: 1fr; gap: 6px; }
-    .main .block-container { padding-left: 1rem; padding-right: 1rem; }
-    .phase-bar-count { display: none; }
-    .stat-val { font-size: 20px; }
-    .progress-pct { font-size: 52px; }
-    div[data-testid="stIFrame"]:nth-of-type(2) iframe { width: 100vw !important; max-width: 380px !important; }
-}
+stButton > button { border-radius: 8px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1492,16 +1643,9 @@ def _phase_progress(phase_key):
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""
-    <div style="padding:.25rem 0 1rem;border-bottom:1px solid #21262D;margin-bottom:.5rem;">
-        <div style="font-size:17px;font-weight:700;color:#E6EDF3;display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;">
-            🧠 ML Roadmap
-        </div>
-        <div style="font-size:11px;color:#8B949E;margin-top:3px;letter-spacing:.03em;">
-            6 months · Tier-1 Engineer
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("## 🧠 ML Roadmap")
+    st.markdown("**6 months to tier-1**")
+    st.markdown("---")
 
     page = st.radio(
         "Navigate",
@@ -1509,52 +1653,13 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    b_done, b_total = _phase_progress("beginner")
-    i_done, i_total = _phase_progress("intermediate")
-    a_done, a_total = _phase_progress("advanced")
-    b_pct = int(b_done / b_total * 100) if b_total else 0
-    i_pct = int(i_done / i_total * 100) if i_total else 0
-    a_pct = int(a_done / a_total * 100) if a_total else 0
-
-    st.markdown(f"""
-    <div style="border-top:1px solid #21262D;padding-top:.75rem;margin-top:.25rem;">
-        <div style="font-size:9px;font-weight:700;color:#8B949E;letter-spacing:.1em;margin-bottom:8px;">PROGRESS</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <div style="flex:1;background:#21262D;border-radius:99px;height:5px;overflow:hidden;">
-                <div style="width:{pct_total}%;background:linear-gradient(90deg,#5DCAA5,#378ADD);height:5px;border-radius:99px;box-shadow:0 0 6px rgba(93,202,165,.5);"></div>
-            </div>
-            <span style="font-size:11px;color:#5DCAA5;font-weight:700;min-width:30px;text-align:right;">{pct_total}%</span>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:9px;color:#5DCAA5;min-width:64px;font-weight:700;letter-spacing:.05em;">BEGINNER</span>
-                <div style="flex:1;background:#21262D;border-radius:99px;height:3px;overflow:hidden;">
-                    <div style="width:{b_pct}%;background:#5DCAA5;height:3px;border-radius:99px;"></div>
-                </div>
-                <span style="font-size:9px;color:#8B949E;min-width:22px;text-align:right;">{b_pct}%</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:9px;color:#378ADD;min-width:64px;font-weight:700;letter-spacing:.05em;">INTER</span>
-                <div style="flex:1;background:#21262D;border-radius:99px;height:3px;overflow:hidden;">
-                    <div style="width:{i_pct}%;background:#378ADD;height:3px;border-radius:99px;"></div>
-                </div>
-                <span style="font-size:9px;color:#8B949E;min-width:22px;text-align:right;">{i_pct}%</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:9px;color:#7F77DD;min-width:64px;font-weight:700;letter-spacing:.05em;">ADVANCED</span>
-                <div style="flex:1;background:#21262D;border-radius:99px;height:3px;overflow:hidden;">
-                    <div style="width:{a_pct}%;background:#7F77DD;height:3px;border-radius:99px;"></div>
-                </div>
-                <span style="font-size:9px;color:#8B949E;min-width:22px;text-align:right;">{a_pct}%</span>
-            </div>
-        </div>
-        <div style="font-size:11px;color:#8B949E;line-height:1.9;border-top:1px solid #21262D;padding-top:.6rem;">
-            <div>⏱&nbsp; 2h/day weekdays</div>
-            <div>📅&nbsp; 3–4h Saturday</div>
-            <div style="color:#5DCAA5;margin-top:4px;font-size:10px;">↓ Tick topics as you finish</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown(f"**Overall progress**")
+    st.progress(pct_total / 100, text=f"{pct_total}% · {done_total}/{total_items} done")
+    st.markdown("---")
+    st.markdown("**Daily target:** 2h weekdays + 3–4h Saturday")
+    st.markdown("**Weekly target:** ~15 hours")
+    st.caption("Tick topics as you finish them →")
 
 # ── Helper renderers ──────────────────────────────────────────────────────────
 
@@ -1573,7 +1678,7 @@ def render_resource(t):
 
 def render_phase(phase_key, tip_html=None):
     phase = ROADMAP[phase_key]
-    pill_style = f"color:{phase['color']};border-color:{phase['color']};box-shadow:0 0 14px {phase['color']}44;"
+    pill_style = f"background:{phase['bg']};color:{phase['color']};"
 
     if tip_html:
         st.markdown(f'<div class="tip-box">{tip_html}</div>', unsafe_allow_html=True)
@@ -1588,20 +1693,7 @@ def render_phase(phase_key, tip_html=None):
 
     p_done, p_total = _phase_progress(phase_key)
     p_pct = int(p_done / p_total * 100) if p_total else 0
-    st.markdown(
-        f'<div style="margin:.25rem 0 1.2rem;">'
-        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
-        f'<span style="font-size:10px;font-weight:700;color:#8B949E;letter-spacing:.08em;">PHASE PROGRESS</span>'
-        f'<span style="font-size:11px;font-weight:700;color:{phase["color"]}">{p_pct}%</span>'
-        f'</div>'
-        f'<div style="background:#21262D;border-radius:99px;height:8px;overflow:hidden;">'
-        f'<div style="width:{p_pct}%;height:8px;border-radius:99px;'
-        f'background:linear-gradient(90deg,{phase["color"]}88,{phase["color"]});'
-        f'box-shadow:0 0 8px {phase["color"]}66;"></div>'
-        f'</div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    st.progress(p_pct / 100, text=f"{p_pct}% of this phase complete")
 
     for sec in phase["sections"]:
         st.markdown(f'<div class="section-divider">{sec["name"]}</div>', unsafe_allow_html=True)
@@ -1701,14 +1793,12 @@ if page == "Overview":
         pd, pt = _phase_progress(pk)
         pp = int(pd / pt * 100) if pt else 0
         st.markdown(
-            f'<div class="phase-bar-wrap">'
-            f'<span class="phase-bar-label" style="color:{color}">{label}</span>'
-            f'<div class="phase-bar-track">'
-            f'<div class="phase-bar-fill" style="width:{pp}%;'
-            f'background:linear-gradient(90deg,{color}77 0%,{color} 50%,{color}77 100%);'
-            f'box-shadow:0 0 8px {color}66;"></div>'
+            f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">'
+            f'<span style="font-size:13px;font-weight:500;color:{color};min-width:90px">{label}</span>'
+            f'<div style="flex:1;background:#21262D;border-radius:99px;height:8px;">'
+            f'<div style="width:{pp}%;background:{color};height:8px;border-radius:99px;"></div>'
             f'</div>'
-            f'<span class="phase-bar-count">{pd} / {pt} done</span>'
+            f'<span style="font-size:12px;color:#8B949E;min-width:90px;text-align:right">{pd} / {pt} done</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -1786,7 +1876,7 @@ elif page == "Projects":
 
     for phase_key in ["beginner", "intermediate", "advanced"]:
         phase = ROADMAP[phase_key]
-        pill_style = f"color:{phase['color']};border-color:{phase['color']};box-shadow:0 0 14px {phase['color']}44;"
+        pill_style = f"background:{phase['bg']};color:{phase['color']};"
         st.markdown(
             f'<span class="phase-pill" style="{pill_style}">{phase["label"]} — {phase["months"]}</span>',
             unsafe_allow_html=True,
@@ -1860,71 +1950,6 @@ elif page == "Interview Prep":
     ]:
         st.markdown(f"⭐ &nbsp; {story}")
 
-elif page == "AI Mentor":
-    st.markdown("# AI Mentor")
-    st.caption("Powered by Groq (llama-3.3-70b) — roadmap-scoped. API call stays on the server; your key is never sent to the browser.")
-
-    col_clear, _ = st.columns([1, 5])
-    with col_clear:
-        if st.button("Clear chat"):
-            st.session_state.messages = []
-            st.rerun()
-
-    if not st.session_state.messages:
-        st.markdown("**Try asking:**")
-        starter_qs = [
-            "Explain how LoRA works mathematically",
-            "Help me debug my PyTorch training loop — loss isn't decreasing",
-            "What should I focus on in week 1?",
-            "Walk me through the tabular-baseline project step by step",
-            "What's the difference between DDP and FSDP?",
-            "How do I know if my RAG pipeline has data leakage?",
-            "Quiz me on transformer attention",
-        ]
-        cols = st.columns(2)
-        for i, q in enumerate(starter_qs):
-            if cols[i % 2].button(q, key=f"starter_{i}"):
-                st.session_state.messages.append({"role": "user", "content": q})
-                st.rerun()
-
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    if prompt := st.chat_input("Ask your ML mentor anything..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        api_key = None
-        try:
-            api_key = st.secrets.get("GROQ_API_KEY", None)
-        except Exception:
-            pass
-
-        if not api_key:
-            st.warning("No API key found. Add `GROQ_API_KEY = 'gsk_...'` to `.streamlit/secrets.toml`.", icon="⚠️")
-        else:
-            try:
-                from groq import Groq
-                client = Groq(api_key=api_key)
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        response = client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            max_tokens=1024,
-                            messages=[{"role": "system", "content": SYSTEM_PROMPT}] +
-                                     [{"role": m["role"], "content": m["content"]}
-                                      for m in st.session_state.messages],
-                        )
-                        reply = response.choices[0].message.content
-                        st.markdown(reply)
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-            except ImportError:
-                st.error("The `groq` package is not installed. Run `pip install groq`.")
-            except Exception as e:
-                st.error(f"API error: {e}")
-
 elif page == "Notifications":
     st.markdown("# Notifications")
     st.caption("Free push notifications via ntfy.sh — no account needed.")
@@ -1947,14 +1972,9 @@ elif page == "Notifications":
         help="Only use letters, numbers, and hyphens. No spaces."
     )
     if topic:
-        if not _TOPIC_RE.match(topic.strip()):
-            st.error("Topic must be 3–64 characters: letters, numbers, hyphens, and underscores only. No spaces or special characters.")
-            topic = ""
-        else:
-            topic = topic.strip()
-            st.session_state["ntfy_topic"] = topic
-            st.markdown(f"**Your ntfy channel:** `ntfy.sh/{topic}`")
-            st.caption(f"In the ntfy app, subscribe to topic: `{topic}`")
+        st.session_state["ntfy_topic"] = topic
+        st.markdown(f"**Your ntfy channel:** `ntfy.sh/{topic}`")
+        st.caption(f"In the ntfy app, subscribe to topic: `{topic}`")
 
     st.markdown("### Step 3 — Set your daily reminder time")
     notif_time = st.time_input(
@@ -1991,8 +2011,8 @@ elif page == "Notifications":
         pct = int(done / total * 100) if total else 0
 
         st.markdown(f"""
-        <div style="background:#161B22; border:1px solid #21262D; border-left: 4px solid #5DCAA5;
-                    border-radius:12px; padding:1rem 1.2rem; font-family:'Outfit',sans-serif;">
+        <div style="background:#161B22; border:1px solid #30363D; border-left: 4px solid #5DCAA5;
+                    border-radius:10px; padding:1rem 1.2rem; font-family:sans-serif;">
             <div style="font-size:13px; color:#7D8590; margin-bottom:4px">📱 Preview</div>
             <div style="font-size:15px; font-weight:600; color:#E6EDF3; margin-bottom:4px">
                 🧠 ML Roadmap — Daily Check-in
@@ -2052,4 +2072,3 @@ jobs:
 4. Schedule: daily at your time
 Done.
     """)
-
