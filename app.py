@@ -71,191 +71,181 @@ canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; }
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-let W, H;
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
 
-function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+// Layer 1: Deep starfield
+const STARS = Array.from({length: 180}, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    r: Math.random() * 1.2 + 0.2,
+    alpha: Math.random() * 0.5 + 0.1,
+    twinkleSpeed: Math.random() * 0.02 + 0.005,
+    twinklePhase: Math.random() * Math.PI * 2
+}));
+
+// Layer 2: Neural network nodes
+const NODES = Array.from({length: 42}, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    r: Math.random() * 2.5 + 1.2,
+    isHub: Math.random() > 0.82,
+    phase: Math.random() * Math.PI * 2,
+    pulseSpeed: Math.random() * 0.015 + 0.005
+}));
+
+// Layer 3: Data particles flying along edges
+const PARTICLES = [];
+function spawnParticle() {
+    for (let attempt = 0; attempt < 10; attempt++) {
+        const a = NODES[Math.floor(Math.random() * NODES.length)];
+        const b = NODES[Math.floor(Math.random() * NODES.length)];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 200 && d > 40) {
+            PARTICLES.push({ from: a, to: b, t: 0, speed: Math.random() * 0.006 + 0.003,
+                size: Math.random() * 1.8 + 0.8,
+                color: Math.random() > 0.5 ? [93,202,165] : [55,138,221] });
+            break;
+        }
+    }
 }
-resize();
-window.addEventListener('resize', resize);
+for (let i = 0; i < 25; i++) spawnParticle();
+setInterval(spawnParticle, 600);
 
-const COLORS = {
-    bg: '#020810',
-    nodeCore: '#5DCAA5',
-    nodeGlow: 'rgba(93,202,165,',
-    edgePrimary: 'rgba(55,138,221,',
-    edgeSecondary: 'rgba(93,202,165,',
-    particle: 'rgba(127,119,221,',
-    pulse: 'rgba(93,202,165,',
-    hub: '#378ADD',
-    hubGlow: 'rgba(55,138,221,'
-};
+// Layer 4: Slow aurora / nebula in background
+let auroraT = 0;
 
-const NODE_COUNT = 55;
-const HUB_COUNT = 6;
-
-class Node {
-    constructor(isHub = false) {
-        this.x = Math.random() * W;
-        this.y = Math.random() * H;
-        this.vx = (Math.random() - 0.5) * (isHub ? 0.2 : 0.38);
-        this.vy = (Math.random() - 0.5) * (isHub ? 0.2 : 0.38);
-        this.isHub = isHub;
-        this.r = isHub ? Math.random() * 4 + 5 : Math.random() * 2 + 1.5;
-        this.baseR = this.r;
-        this.phase = Math.random() * Math.PI * 2;
-        this.speed = Math.random() * 0.02 + 0.008;
-        this.pulseAmp = isHub ? 3 : 1.2;
-        this.alpha = Math.random() * 0.4 + 0.6;
-    }
-    update(t) {
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < -50) this.x = W + 50;
-        if (this.x > W + 50) this.x = -50;
-        if (this.y < -50) this.y = H + 50;
-        if (this.y > H + 50) this.y = -50;
-        this.r = this.baseR + Math.sin(t * this.speed + this.phase) * this.pulseAmp;
-    }
-    draw(ctx) {
-        const glowSize = this.r * (this.isHub ? 5 : 3.5);
-        const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowSize);
-        const col = this.isHub ? COLORS.hubGlow : COLORS.nodeGlow;
-        grad.addColorStop(0, col + (this.isHub ? '0.35)' : '0.25)'));
-        grad.addColorStop(0.4, col + '0.08)');
-        grad.addColorStop(1, col + '0)');
+function drawAurora() {
+    auroraT += 0.003;
+    const glows = [
+        { x: W * 0.15, y: H * 0.3,  rx: 320, ry: 180, hue: '93,202,165', a: 0.028 },
+        { x: W * 0.75, y: H * 0.6,  rx: 280, ry: 200, hue: '55,138,221', a: 0.022 },
+        { x: W * 0.5,  y: H * 0.85, rx: 350, ry: 140, hue: '127,119,221', a: 0.018 },
+    ];
+    glows.forEach((g, i) => {
+        const ox = Math.sin(auroraT + i * 1.2) * 40;
+        const oy = Math.cos(auroraT * 0.7 + i) * 30;
+        const grad = ctx.createRadialGradient(
+            g.x + ox, g.y + oy, 0,
+            g.x + ox, g.y + oy, Math.max(g.rx, g.ry)
+        );
+        grad.addColorStop(0,   `rgba(${g.hue},${g.a})`);
+        grad.addColorStop(0.5, `rgba(${g.hue},${g.a * 0.4})`);
+        grad.addColorStop(1,   `rgba(${g.hue},0)`);
+        ctx.save();
+        ctx.scale(g.rx / Math.max(g.rx, g.ry), g.ry / Math.max(g.rx, g.ry));
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+        ctx.arc((g.x + ox) / (g.rx / Math.max(g.rx, g.ry)),
+                (g.y + oy) / (g.ry / Math.max(g.rx, g.ry)),
+                Math.max(g.rx, g.ry), 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fillStyle = this.isHub ? COLORS.hub : COLORS.nodeCore;
-        ctx.globalAlpha = this.alpha;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        if (this.isHub) {
-            ctx.beginPath();
-            ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.35, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(200,240,255,0.6)';
-            ctx.fill();
-        }
-    }
+        ctx.restore();
+    });
 }
-
-class Particle {
-    constructor(from, to) {
-        this.from = from;
-        this.to = to;
-        this.t = Math.random();
-        this.speed = Math.random() * 0.004 + 0.002;
-        this.size = Math.random() * 2 + 1;
-        this.alpha = Math.random() * 0.7 + 0.3;
-        this.color = Math.random() > 0.5 ? COLORS.particle : COLORS.edgePrimary;
-    }
-    update() { this.t += this.speed; if (this.t > 1) this.t = 0; }
-    draw(ctx) {
-        const x = this.from.x + (this.to.x - this.from.x) * this.t;
-        const y = this.from.y + (this.to.y - this.from.y) * this.t;
-        ctx.beginPath();
-        ctx.arc(x, y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = this.color + this.alpha + ')';
-        ctx.fill();
-    }
-}
-
-class PulseRing {
-    constructor(x, y) {
-        this.x = x; this.y = y;
-        this.r = 0;
-        this.maxR = Math.random() * 80 + 60;
-        this.speed = Math.random() * 0.8 + 0.4;
-        this.alpha = 0.5;
-        this.done = false;
-    }
-    update() {
-        this.r += this.speed;
-        this.alpha = 0.5 * (1 - this.r / this.maxR);
-        if (this.r >= this.maxR) this.done = true;
-    }
-    draw(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.strokeStyle = COLORS.pulse + this.alpha + ')';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-    }
-}
-
-const nodes = [];
-for (let i = 0; i < HUB_COUNT; i++) nodes.push(new Node(true));
-for (let i = 0; i < NODE_COUNT - HUB_COUNT; i++) nodes.push(new Node(false));
-
-const MAX_DIST = 180;
-const MAX_HUB_DIST = 280;
-const particles = [];
-const pulseRings = [];
-
-function refreshParticles() {
-    particles.length = 0;
-    for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-            const ni = nodes[i], nj = nodes[j];
-            const dx = ni.x - nj.x, dy = ni.y - nj.y;
-            const d = Math.sqrt(dx*dx + dy*dy);
-            const maxD = (ni.isHub || nj.isHub) ? MAX_HUB_DIST : MAX_DIST;
-            if (d < maxD && (ni.isHub || nj.isHub)) {
-                if (Math.random() > 0.4) particles.push(new Particle(ni, nj));
-            }
-        }
-    }
-}
-refreshParticles();
-setInterval(refreshParticles, 4000);
-
-setInterval(() => {
-    const hub = nodes[Math.floor(Math.random() * HUB_COUNT)];
-    pulseRings.push(new PulseRing(hub.x, hub.y));
-}, 1200);
 
 let frame = 0;
 function draw() {
     frame++;
-    ctx.fillStyle = 'rgba(2,8,16,0.18)';
+
+    ctx.fillStyle = 'rgba(2,8,16,0.22)';
     ctx.fillRect(0, 0, W, H);
 
-    for (let i = pulseRings.length - 1; i >= 0; i--) {
-        pulseRings[i].update();
-        pulseRings[i].draw(ctx);
-        if (pulseRings[i].done) pulseRings.splice(i, 1);
-    }
+    drawAurora();
 
-    for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-            const ni = nodes[i], nj = nodes[j];
-            const dx = ni.x - nj.x, dy = ni.y - nj.y;
-            const d = Math.sqrt(dx*dx + dy*dy);
-            const maxD = (ni.isHub || nj.isHub) ? MAX_HUB_DIST : MAX_DIST;
+    STARS.forEach(s => {
+        const tw = 0.5 + 0.5 * Math.sin(frame * s.twinkleSpeed + s.twinklePhase);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(200,230,255,${s.alpha * tw})`;
+        ctx.fill();
+    });
+
+    for (let i = 0; i < NODES.length; i++) {
+        for (let j = i+1; j < NODES.length; j++) {
+            const a = NODES[i], b = NODES[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const d = Math.sqrt(dx*dx+dy*dy);
+            const maxD = (a.isHub || b.isHub) ? 220 : 150;
             if (d < maxD) {
-                const alpha = (1 - d / maxD) * (ni.isHub || nj.isHub ? 0.55 : 0.22);
-                const isHubEdge = ni.isHub || nj.isHub;
-                ctx.strokeStyle = (isHubEdge ? COLORS.edgePrimary : COLORS.edgeSecondary) + alpha + ')';
-                ctx.lineWidth = isHubEdge ? 1.2 : 0.6;
+                const alpha = (1 - d/maxD) * (a.isHub || b.isHub ? 0.45 : 0.18);
+                ctx.strokeStyle = (a.isHub || b.isHub)
+                    ? `rgba(55,138,221,${alpha})`
+                    : `rgba(93,202,165,${alpha})`;
+                ctx.lineWidth = a.isHub || b.isHub ? 1.0 : 0.5;
                 ctx.beginPath();
-                ctx.moveTo(ni.x, ni.y);
-                ctx.lineTo(nj.x, nj.y);
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
                 ctx.stroke();
             }
         }
     }
 
-    particles.forEach(p => { p.update(); p.draw(ctx); });
+    for (let i = PARTICLES.length - 1; i >= 0; i--) {
+        const p = PARTICLES[i];
+        p.t += p.speed;
+        if (p.t > 1) { PARTICLES.splice(i, 1); continue; }
+        const x = p.from.x + (p.to.x - p.from.x) * p.t;
+        const y = p.from.y + (p.to.y - p.from.y) * p.t;
+        const alpha = Math.sin(p.t * Math.PI);
 
-    nodes.sort((a,b) => a.isHub - b.isHub);
-    nodes.forEach(n => { n.update(frame); n.draw(ctx); });
+        const g = ctx.createRadialGradient(x, y, 0, x, y, p.size * 4);
+        g.addColorStop(0, `rgba(${p.color.join(',')},${alpha * 0.8})`);
+        g.addColorStop(1, `rgba(${p.color.join(',')},0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, p.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color.join(',')},${alpha})`;
+        ctx.fill();
+    }
+
+    NODES.forEach(n => {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < -30) n.x = W+30; if (n.x > W+30) n.x = -30;
+        if (n.y < -30) n.y = H+30; if (n.y > H+30) n.y = -30;
+
+        const pulse = 1 + Math.sin(frame * n.pulseSpeed + n.phase) * (n.isHub ? 0.5 : 0.25);
+        const r = n.r * pulse;
+
+        if (n.isHub) {
+            const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 6);
+            g.addColorStop(0, 'rgba(55,138,221,0.3)');
+            g.addColorStop(0.5, 'rgba(55,138,221,0.06)');
+            g.addColorStop(1, 'rgba(55,138,221,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r * 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = '#378ADD';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(n.x - r*0.3, n.y - r*0.3, r*0.3, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(180,220,255,0.7)';
+            ctx.fill();
+        } else {
+            const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 4);
+            g.addColorStop(0, 'rgba(93,202,165,0.2)');
+            g.addColorStop(1, 'rgba(93,202,165,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r * 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(93,202,165,0.85)';
+            ctx.fill();
+        }
+    });
 
     requestAnimationFrame(draw);
 }
@@ -1682,7 +1672,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "AI Mentor", "Notifications"],
+        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "Notifications"],
         label_visibility="collapsed",
     )
 
