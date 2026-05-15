@@ -48,60 +48,84 @@ st.set_page_config(
 
 def render_animated_background():
     st.markdown("""
-    <style>
-    .stApp { background: #020810 !important; }
-    section[data-testid="stSidebar"] {
-        background: rgba(2,8,16,0.95) !important;
-        z-index: 100 !important;
-        backdrop-filter: blur(10px) !important;
-    }
-    header[data-testid="stHeader"] {
-        background: rgba(2,8,16,0.85) !important;
-        z-index: 100 !important;
-    }
-    .main .block-container {
-        background: transparent !important;
-        z-index: 2 !important;
-        position: relative !important;
-    }
-    /* Background iframe — full screen behind everything */
-    iframe:nth-of-type(1) {
-        position: fixed !important;
-        top: 0 !important; left: 0 !important;
-        width: 100vw !important; height: 100vh !important;
-        z-index: 1 !important;
-        border: none !important;
-        pointer-events: none !important;
-    }
-    /* Collapse background iframe container — no layout space */
-    div:has(> iframe:nth-of-type(1)) {
-        height: 0 !important;
-        overflow: visible !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    /* Chatbot iframe — fixed bottom right */
-    iframe:nth-of-type(2) {
-        position: fixed !important;
-        bottom: 0 !important; right: 0 !important;
-        top: auto !important; left: auto !important;
-        width: 400px !important; height: 580px !important;
-        z-index: 9999 !important;
-        border: none !important;
-        pointer-events: all !important;
-        background: transparent !important;
-    }
-    div:has(> iframe:nth-of-type(2)) {
-        height: 0 !important;
-        overflow: visible !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    /* Page content above background */
-    section[data-testid="stSidebar"] { z-index: 100 !important; }
-    header[data-testid="stHeader"] { z-index: 100 !important; }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+/* Background iframe container — zero height, no layout space */
+div[data-testid="stMain"] > div > div > div > div:first-child,
+section[data-testid="stMain"] > div > div > div > div:first-child {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+div[data-testid="stMain"] > div > div > div > div:first-child iframe,
+section[data-testid="stMain"] > div > div > div > div:first-child iframe {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    border: none !important;
+    pointer-events: none !important;
+}
+
+/* ALL page content must sit above the background */
+.main .block-container {
+    position: relative !important;
+    z-index: 10 !important;
+    background: transparent !important;
+}
+section[data-testid="stMain"] {
+    position: relative !important;
+    z-index: 10 !important;
+}
+section[data-testid="stSidebar"] {
+    position: relative !important;
+    z-index: 100 !important;
+    background: rgba(2,8,16,0.92) !important;
+    backdrop-filter: blur(12px) !important;
+}
+header[data-testid="stHeader"] {
+    position: relative !important;
+    z-index: 100 !important;
+    background: rgba(2,8,16,0.8) !important;
+}
+
+/* Chatbot iframe — fixed bottom right, above everything */
+div[data-testid="stMain"] > div > div > div > div:nth-child(2) iframe,
+section[data-testid="stMain"] > div > div > div > div:nth-child(2) iframe {
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    left: auto !important;
+    width: 400px !important;
+    height: 580px !important;
+    z-index: 9999 !important;
+    border: none !important;
+    pointer-events: all !important;
+    background: transparent !important;
+}
+div[data-testid="stMain"] > div > div > div > div:nth-child(2),
+section[data-testid="stMain"] > div > div > div > div:nth-child(2) {
+    height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none !important;
+}
+
+.stApp {
+    background: #020810 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
     components.html("""
 <!DOCTYPE html>
@@ -253,7 +277,7 @@ draw();
 </script>
 </body>
 </html>
-    """, height=700, scrolling=False)
+    """, height=1, scrolling=False)
 
 def render_floating_chatbot():
     groq_key = ""
