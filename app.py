@@ -152,7 +152,8 @@ let frame = 0;
 function draw() {
     frame++;
 
-    ctx.fillStyle = 'rgba(2,8,16,0.22)';
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#020810';
     ctx.fillRect(0, 0, W, H);
 
     drawAurora();
@@ -312,204 +313,169 @@ header[data-testid="stHeader"] {
 """, unsafe_allow_html=True)
 
 def render_floating_chatbot():
-    components.html("""
-    <style>
-    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-    body {{ background: transparent; overflow: hidden; font-family: -apple-system, sans-serif; }}
+    groq_key = ""
+    try:
+        groq_key = st.secrets.get("GROQ_API_KEY", "")
+    except:
+        pass
 
-    #bubble {{
-        position: fixed;
-        bottom: 24px; right: 24px;
-        width: 52px; height: 52px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #5DCAA5 0%, #378ADD 100%);
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 4px 24px rgba(93,202,165,0.45);
-        transition: transform .2s, box-shadow .2s;
-        z-index: 999;
-    }}
-    #bubble:hover {{ transform: scale(1.1); box-shadow: 0 6px 32px rgba(93,202,165,0.65); }}
-    #bubble svg {{ width: 24px; height: 24px; fill: white; }}
-
-    #win {{
-        position: fixed;
-        bottom: 86px; right: 24px;
-        width: 340px; height: 480px;
-        background: #161B22;
-        border: 1px solid #30363D;
-        border-radius: 14px;
-        display: none; flex-direction: column;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-        z-index: 998;
-        overflow: hidden;
-    }}
-    #win.open {{ display: flex; }}
-
-    #hdr {{
-        padding: 12px 14px;
-        background: #0D1117;
-        border-bottom: 1px solid #21262D;
-        display: flex; align-items: center; justify-content: space-between;
-        flex-shrink: 0;
-    }}
-    .hdr-l {{ display: flex; align-items: center; gap: 9px; }}
-    .av {{
-        width: 30px; height: 30px; border-radius: 50%;
-        background: linear-gradient(135deg, #5DCAA5, #378ADD);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 14px;
-    }}
-    .ttl {{ color: #E6EDF3; font-size: 13px; font-weight: 600; }}
-    .sub {{ color: #7D8590; font-size: 10px; }}
-    .cls {{ color: #7D8590; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; }}
-    .cls:hover {{ color: #E6EDF3; background: #21262D; }}
-
-    #msgs {{
-        flex: 1; overflow-y: auto; padding: 12px;
-        display: flex; flex-direction: column; gap: 8px;
-        scrollbar-width: thin; scrollbar-color: #30363D transparent;
-    }}
-    .m {{
-        max-width: 86%; padding: 8px 12px; border-radius: 10px;
-        font-size: 12.5px; line-height: 1.5; word-wrap: break-word;
-    }}
-    .m.u {{
-        background: #1F6FEB22; border: 1px solid #1F6FEB44;
-        color: #E6EDF3; align-self: flex-end; border-bottom-right-radius: 3px;
-    }}
-    .m.b {{
-        background: #21262D; border: 1px solid #30363D;
-        color: #C9D1D9; align-self: flex-start; border-bottom-left-radius: 3px;
-    }}
-    .m.t {{ color: #7D8590; font-style: italic; }}
-
-    .qw {{ display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 8px; flex-shrink: 0; }}
-    .qb {{
-        font-size: 10.5px; padding: 3px 9px;
-        background: #21262D; border: 1px solid #30363D;
-        border-radius: 99px; color: #8B949E; cursor: pointer;
-        transition: all .15s; white-space: nowrap;
-    }}
-    .qb:hover {{ background: #2D333B; color: #E6EDF3; border-color: #5DCAA5; }}
-
-    #inp-area {{
-        padding: 10px 12px; border-top: 1px solid #21262D;
-        display: flex; gap: 7px; flex-shrink: 0; background: #0D1117;
-    }}
-    #inp {{
-        flex: 1; background: #21262D; border: 1px solid #30363D;
-        border-radius: 7px; color: #E6EDF3; padding: 7px 11px;
-        font-size: 12px; outline: none; resize: none; height: 36px;
-    }}
-    #inp:focus {{ border-color: #5DCAA5; }}
-    #inp::placeholder {{ color: #7D8590; }}
-    #snd {{
-        width: 36px; height: 36px; border-radius: 7px;
-        background: linear-gradient(135deg, #5DCAA5, #378ADD);
-        border: none; cursor: pointer;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }}
-    #snd:hover {{ opacity: 0.85; }}
-    #snd svg {{ width: 15px; height: 15px; fill: white; }}
-    </style>
-
-    <div id="bubble" onclick="toggle()">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
+    components.html(f"""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+html,body{{background:transparent;overflow:hidden;font-family:-apple-system,sans-serif}}
+#bubble{{
+    position:fixed;bottom:24px;right:24px;
+    width:52px;height:52px;border-radius:50%;
+    background:linear-gradient(135deg,#5DCAA5,#378ADD);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 4px 24px rgba(93,202,165,0.5);
+    transition:transform .2s,box-shadow .2s;z-index:999;
+    animation: breathe 3s ease-in-out infinite;
+}}
+@keyframes breathe {{
+    0%,100% {{ box-shadow: 0 4px 24px rgba(93,202,165,0.4); }}
+    50% {{ box-shadow: 0 4px 36px rgba(93,202,165,0.8), 0 0 60px rgba(93,202,165,0.3); }}
+}}
+#bubble:hover{{transform:scale(1.12)}}
+#bubble svg{{width:24px;height:24px;fill:white}}
+#win{{
+    position:fixed;bottom:86px;right:24px;
+    width:340px;height:480px;
+    background:#0D1117;border:1px solid #30363D;
+    border-radius:16px;display:none;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,0.8),0 0 40px rgba(93,202,165,0.1);
+    z-index:998;overflow:hidden;
+}}
+#win.open{{display:flex}}
+#hdr{{
+    padding:12px 14px;
+    background:linear-gradient(135deg,#0D2137,#0D1117);
+    border-bottom:1px solid #21262D;
+    display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}}
+.hl{{display:flex;align-items:center;gap:9px}}
+.av{{
+    width:30px;height:30px;border-radius:50%;
+    background:linear-gradient(135deg,#5DCAA5,#378ADD);
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+}}
+.tt{{color:#E6EDF3;font-size:13px;font-weight:600}}
+.sb{{color:#7D8590;font-size:10px}}
+.cl{{color:#7D8590;cursor:pointer;font-size:20px;padding:2px 6px;border-radius:4px}}
+.cl:hover{{color:#E6EDF3;background:#21262D}}
+#msgs{{
+    flex:1;overflow-y:auto;padding:12px;
+    display:flex;flex-direction:column;gap:8px;
+    scrollbar-width:thin;scrollbar-color:#30363D transparent;
+}}
+.m{{max-width:86%;padding:8px 12px;border-radius:10px;font-size:12.5px;line-height:1.5;word-wrap:break-word}}
+.m.u{{background:#1F6FEB22;border:1px solid #1F6FEB44;color:#E6EDF3;align-self:flex-end;border-bottom-right-radius:3px}}
+.m.b{{background:#161B22;border:1px solid #30363D;color:#C9D1D9;align-self:flex-start;border-bottom-left-radius:3px}}
+.m.t{{color:#7D8590;font-style:italic}}
+.qw{{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 8px;flex-shrink:0}}
+.qb{{
+    font-size:10.5px;padding:3px 9px;
+    background:#21262D;border:1px solid #30363D;
+    border-radius:99px;color:#8B949E;cursor:pointer;transition:all .15s;white-space:nowrap;
+}}
+.qb:hover{{background:#2D333B;color:#E6EDF3;border-color:#5DCAA5}}
+#ia{{padding:10px 12px;border-top:1px solid #21262D;display:flex;gap:7px;flex-shrink:0;background:#0D1117}}
+#inp{{
+    flex:1;background:#21262D;border:1px solid #30363D;
+    border-radius:7px;color:#E6EDF3;padding:7px 11px;
+    font-size:12px;outline:none;resize:none;height:36px;
+}}
+#inp:focus{{border-color:#5DCAA5}}
+#inp::placeholder{{color:#7D8590}}
+#snd{{
+    width:36px;height:36px;border-radius:7px;
+    background:linear-gradient(135deg,#5DCAA5,#378ADD);
+    border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}}
+#snd svg{{width:15px;height:15px;fill:white}}
+</style>
+</head>
+<body>
+<div id="bubble" onclick="tog()">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
+</div>
+<div id="win">
+    <div id="hdr">
+        <div class="hl">
+            <div class="av">🧠</div>
+            <div><div class="tt">ML Mentor</div><div class="sb">Roadmap-scoped · llama-3.3-70b</div></div>
+        </div>
+        <div class="cl" onclick="tog()">×</div>
     </div>
-
-    <div id="win">
-        <div id="hdr">
-            <div class="hdr-l">
-                <div class="av">🧠</div>
-                <div><div class="ttl">ML Mentor</div><div class="sub">Roadmap-scoped · llama-3.3-70b</div></div>
-            </div>
-            <div class="cls" onclick="toggle()">×</div>
-        </div>
-        <div id="msgs">
-            <div class="m b">Hey! Ask me about any concept, project, or resource in the roadmap 👋</div>
-        </div>
-        <div class="qw" id="qw">
-            <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
-            <span class="qb" onclick="sq('What to do in week 1?')">Week 1</span>
-            <span class="qb" onclick="sq('Walk me through tabular-baseline')">tabular-baseline</span>
-            <span class="qb" onclick="sq('Explain KV cache')">KV cache</span>
-            <span class="qb" onclick="sq('Quiz me on attention')">Quiz me</span>
-        </div>
-        <div id="inp-area">
-            <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
-            <button id="snd" onclick="send()">
-                <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
-            </button>
-        </div>
+    <div id="msgs">
+        <div class="m b">Hey! Ask me about any concept, project, or resource in the roadmap 👋</div>
     </div>
-
-    <script>
-    let open = false;
-
-    function toggle() {
-        open = !open;
-        document.getElementById('win').classList.toggle('open', open);
-        if (open) document.getElementById('inp').focus();
-    }
-
-    function sq(t) { document.getElementById('inp').value = t; nudge(); }
-
-    function nudge() {
-        const inp = document.getElementById('inp');
-        if (!inp.value.trim()) return;
-        inp.value = '';
-        document.getElementById('qw').style.display = 'none';
-        add('Open the AI Mentor page in the sidebar to chat — your question is ready to paste there!', 'b');
-    }
-
-    function add(txt, cls) {
-        const el = document.createElement('div');
-        el.className = 'm ' + cls;
-        el.textContent = txt;
-        const c = document.getElementById('msgs');
-        c.appendChild(el);
-        c.scrollTop = c.scrollHeight;
-        return el;
-    }
-
-    document.getElementById('snd').addEventListener('click', nudge);
-    document.getElementById('inp').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); nudge(); }
-    });
-    </script>
+    <div class="qw" id="qw">
+        <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
+        <span class="qb" onclick="sq('What to do in week 1?')">Week 1</span>
+        <span class="qb" onclick="sq('Walk me through tabular-baseline')">tabular-baseline</span>
+        <span class="qb" onclick="sq('Explain KV cache')">KV cache</span>
+        <span class="qb" onclick="sq('Quiz me on attention')">Quiz me ⚡</span>
+    </div>
+    <div id="ia">
+        <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
+        <button id="snd" onclick="send()">
+            <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
+    </div>
+</div>
+<script>
+const KEY="{groq_key}";
+const SYS=`You are an ML roadmap mentor. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it.
+Roadmap covers: Math, Python ML toolchain, Classical ML, Neural nets, PyTorch, CNNs, LSTMs, Transformers, ViT, Diffusion, DDP/FSDP, HuggingFace, LoRA, QLoRA, SFT, DPO, RAG, vllm, MLOps, LangGraph, Agents. Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise under 250 words, use code examples.`;
+let msgs=[],open=false;
+function tog(){{open=!open;document.getElementById('win').classList.toggle('open',open);if(open)document.getElementById('inp').focus();}}
+function sq(t){{document.getElementById('inp').value=t;send();}}
+function send(){{
+    const inp=document.getElementById('inp');
+    const txt=inp.value.trim();if(!txt)return;
+    inp.value='';add(txt,'u');msgs.push({{role:'user',content:txt}});
+    document.getElementById('qw').style.display='none';
+    const th=add('Thinking...','b t');
+    if(!KEY){{th.remove();add('⚠️ Add GROQ_API_KEY to Streamlit secrets.','b');return;}}
+    fetch('https://api.groq.com/openai/v1/chat/completions',{{
+        method:'POST',
+        headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
+        body:JSON.stringify({{model:'llama-3.3-70b-versatile',max_tokens:500,
+            messages:[{{role:'system',content:SYS}},...msgs]}})
+    }})
+    .then(r=>r.json())
+    .then(d=>{{th.remove();const r=d.choices?.[0]?.message?.content||'Sorry, something went wrong.';add(r,'b');msgs.push({{role:'assistant',content:r}});}})
+    .catch(()=>{{th.remove();add('Network error.','b');}});
+}}
+function add(txt,cls){{
+    const el=document.createElement('div');el.className='m '+cls;el.textContent=txt;
+    const c=document.getElementById('msgs');c.appendChild(el);c.scrollTop=c.scrollHeight;return el;
+}}
+document.getElementById('inp').addEventListener('keydown',e=>{{if(e.key==='Enter'&&!e.shiftKey){{e.preventDefault();send();}}}});
+</script>
+</body>
+</html>
     """, height=1, scrolling=False)
 
     st.markdown("""
-<style>
-div[data-testid="stIFrame"]:nth-of-type(2) iframe,
-div.stHtml:nth-of-type(2) iframe,
-[data-testid="stMain"] iframe:nth-of-type(2) {
-    position: fixed !important;
-    bottom: 0 !important;
-    right: 0 !important;
-    top: auto !important;
-    left: auto !important;
-    width: 420px !important;
-    height: 600px !important;
-    z-index: 9999 !important;
-    pointer-events: all !important;
-    border: none !important;
-    background: transparent !important;
-    margin: 0 !important;
-    max-width: none !important;
-}
-
-div[data-testid="stIFrame"]:nth-of-type(2),
-div.stHtml:nth-of-type(2) {
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-}
-</style>
-""", unsafe_allow_html=True)
+    <style>
+    section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
+        height:0!important;overflow:visible!important;margin:0!important;padding:0!important;
+    }
+    section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
+        position:fixed!important;bottom:0!important;right:0!important;
+        top:auto!important;left:auto!important;
+        width:400px!important;height:560px!important;
+        z-index:9999!important;border:none!important;
+        background:transparent!important;margin:0!important;
+        pointer-events:all!important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 render_animated_background()
 render_floating_chatbot()
