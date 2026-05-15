@@ -48,236 +48,162 @@ st.set_page_config(
 
 def render_animated_background():
     st.markdown("""
-<style>
-/* Background iframe container — zero height, no layout space */
-div[data-testid="stMain"] > div > div > div > div:first-child,
-section[data-testid="stMain"] > div > div > div > div:first-child {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 0 !important;
-    pointer-events: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-}
-div[data-testid="stMain"] > div > div > div > div:first-child iframe,
-section[data-testid="stMain"] > div > div > div > div:first-child iframe {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 0 !important;
-    border: none !important;
-    pointer-events: none !important;
-}
-
-/* ALL page content must sit above the background */
-.main .block-container {
-    position: relative !important;
-    z-index: 10 !important;
-    background: transparent !important;
-}
-section[data-testid="stMain"] {
-    position: relative !important;
-    z-index: 10 !important;
-}
-section[data-testid="stSidebar"] {
-    position: relative !important;
-    z-index: 100 !important;
-    background: rgba(2,8,16,0.92) !important;
-    backdrop-filter: blur(12px) !important;
-}
-header[data-testid="stHeader"] {
-    position: relative !important;
-    z-index: 100 !important;
-    background: rgba(2,8,16,0.8) !important;
-}
-
-/* Chatbot iframe — fixed bottom right, above everything */
-div[data-testid="stMain"] > div > div > div > div:nth-child(2) iframe,
-section[data-testid="stMain"] > div > div > div > div:nth-child(2) iframe {
-    position: fixed !important;
-    bottom: 0 !important;
-    right: 0 !important;
-    top: auto !important;
-    left: auto !important;
-    width: 400px !important;
-    height: 580px !important;
-    z-index: 9999 !important;
-    border: none !important;
-    pointer-events: all !important;
-    background: transparent !important;
-}
-div[data-testid="stMain"] > div > div > div > div:nth-child(2),
-section[data-testid="stMain"] > div > div > div > div:nth-child(2) {
-    height: 0 !important;
-    overflow: visible !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    pointer-events: none !important;
-}
-
-.stApp {
-    background: #020810 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-    components.html("""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  * { margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #020810; }
-  canvas { display: block; width: 100%; height: 100%; }
-</style>
-</head>
-<body>
-<canvas id="c"></canvas>
-<script>
-const cv = document.getElementById('c');
-const cx = cv.getContext('2d');
-let W = cv.width = window.innerWidth;
-let H = cv.height = window.innerHeight;
-window.addEventListener('resize', () => { W = cv.width = window.innerWidth; H = cv.height = window.innerHeight; });
-
-const stars = Array.from({length:220},()=>({
-  x:Math.random()*W, y:Math.random()*H,
-  r:Math.random()*1.1+0.2,
-  a:Math.random()*0.45+0.1,
-  sp:Math.random()*0.018+0.004,
-  ph:Math.random()*Math.PI*2
-}));
-
-const nodes = Array.from({length:60},()=>({
-  x:Math.random()*W, y:Math.random()*H,
-  vx:(Math.random()-0.5)*0.32,
-  vy:(Math.random()-0.5)*0.32,
-  r:Math.random()*2.2+1.1,
-  hub:Math.random()>0.83,
-  ph:Math.random()*Math.PI*2,
-  ps:Math.random()*0.014+0.005
-}));
-
-const parts = [];
-function spawn(){
-  for(let i=0;i<12;i++){
-    const a=nodes[Math.floor(Math.random()*nodes.length)];
-    const b=nodes[Math.floor(Math.random()*nodes.length)];
-    const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
-    if(d<210&&d>50){
-      parts.push({a,b,t:0,sp:Math.random()*0.005+0.003,
-        sz:Math.random()*1.6+0.7,
-        c:Math.random()>0.5?[93,202,165]:[55,138,221]});
-      break;
+    <style>
+    @keyframes drift1 {
+        0%   { transform: translate(0px, 0px) scale(1); }
+        33%  { transform: translate(60px, -40px) scale(1.08); }
+        66%  { transform: translate(-30px, 50px) scale(0.95); }
+        100% { transform: translate(0px, 0px) scale(1); }
     }
-  }
-}
-for(let i=0;i<28;i++) spawn();
-setInterval(spawn,480);
-
-let at=0,fr=0;
-const aurora=[
-  {bx:0.15,by:0.28,rx:400,ry:220,c:'93,202,165',a:0.052},
-  {bx:0.78,by:0.58,rx:340,ry:250,c:'55,138,221',a:0.042},
-  {bx:0.48,by:0.87,rx:420,ry:160,c:'127,119,221',a:0.036}
-];
-
-function draw(){
-  fr++;
-  at+=0.003;
-  cx.clearRect(0,0,W,H);
-  cx.fillStyle='#020810';
-  cx.fillRect(0,0,W,H);
-
-  aurora.forEach((g,i)=>{
-    const ox=Math.sin(at+i*1.3)*55, oy=Math.cos(at*0.75+i)*38;
-    const gx=g.bx*W+ox, gy=g.by*H+oy;
-    const mx=Math.max(g.rx,g.ry);
-    const gr=cx.createRadialGradient(gx,gy,0,gx,gy,mx);
-    gr.addColorStop(0,'rgba('+g.c+','+g.a+')');
-    gr.addColorStop(0.45,'rgba('+g.c+','+(g.a*0.28)+')');
-    gr.addColorStop(1,'rgba('+g.c+',0)');
-    cx.save();
-    cx.translate(gx,gy);
-    cx.scale(g.rx/mx,g.ry/mx);
-    cx.beginPath();cx.arc(0,0,mx,0,Math.PI*2);
-    cx.fillStyle=gr;cx.fill();
-    cx.restore();
-  });
-
-  stars.forEach(s=>{
-    const tw=0.5+0.5*Math.sin(fr*s.sp+s.ph);
-    cx.beginPath();cx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    cx.fillStyle='rgba(210,235,255,'+(s.a*tw)+')';
-    cx.fill();
-  });
-
-  for(let i=0;i<nodes.length;i++){
-    for(let j=i+1;j<nodes.length;j++){
-      const a=nodes[i],b=nodes[j];
-      const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
-      const md=(a.hub||b.hub)?240:158;
-      if(d<md){
-        const al=(1-d/md)*((a.hub||b.hub)?0.52:0.2);
-        cx.strokeStyle=(a.hub||b.hub)?'rgba(55,138,221,'+al+')':'rgba(93,202,165,'+al+')';
-        cx.lineWidth=(a.hub||b.hub)?1.1:0.5;
-        cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();
-      }
+    @keyframes drift2 {
+        0%   { transform: translate(0px, 0px) scale(1); }
+        33%  { transform: translate(-70px, 50px) scale(1.05); }
+        66%  { transform: translate(40px, -60px) scale(1.1); }
+        100% { transform: translate(0px, 0px) scale(1); }
     }
-  }
-
-  for(let i=parts.length-1;i>=0;i--){
-    const p=parts[i]; p.t+=p.sp;
-    if(p.t>1){parts.splice(i,1);continue;}
-    const x=p.a.x+(p.b.x-p.a.x)*p.t;
-    const y=p.a.y+(p.b.y-p.a.y)*p.t;
-    const al=Math.sin(p.t*Math.PI);
-    const g=cx.createRadialGradient(x,y,0,x,y,p.sz*5);
-    g.addColorStop(0,'rgba('+p.c+','+(al*0.85)+')');
-    g.addColorStop(1,'rgba('+p.c+',0)');
-    cx.fillStyle=g;cx.beginPath();cx.arc(x,y,p.sz*5,0,Math.PI*2);cx.fill();
-    cx.beginPath();cx.arc(x,y,p.sz,0,Math.PI*2);
-    cx.fillStyle='rgba('+p.c+','+al+')';cx.fill();
-  }
-
-  nodes.forEach(n=>{
-    n.x+=n.vx; n.y+=n.vy;
-    if(n.x<-30)n.x=W+30; if(n.x>W+30)n.x=-30;
-    if(n.y<-30)n.y=H+30; if(n.y>H+30)n.y=-30;
-    const pulse=1+Math.sin(fr*n.ps+n.ph)*(n.hub?0.55:0.28);
-    const r=n.r*pulse;
-    if(n.hub){
-      const g=cx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*8);
-      g.addColorStop(0,'rgba(55,138,221,0.38)');
-      g.addColorStop(0.35,'rgba(55,138,221,0.08)');
-      g.addColorStop(1,'rgba(55,138,221,0)');
-      cx.fillStyle=g;cx.beginPath();cx.arc(n.x,n.y,r*8,0,Math.PI*2);cx.fill();
-      cx.beginPath();cx.arc(n.x,n.y,r,0,Math.PI*2);cx.fillStyle='#378ADD';cx.fill();
-      cx.beginPath();cx.arc(n.x-r*0.3,n.y-r*0.3,r*0.32,0,Math.PI*2);
-      cx.fillStyle='rgba(180,220,255,0.65)';cx.fill();
-    } else {
-      const g=cx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*4);
-      g.addColorStop(0,'rgba(93,202,165,0.2)');
-      g.addColorStop(1,'rgba(93,202,165,0)');
-      cx.fillStyle=g;cx.beginPath();cx.arc(n.x,n.y,r*4,0,Math.PI*2);cx.fill();
-      cx.beginPath();cx.arc(n.x,n.y,r,0,Math.PI*2);
-      cx.fillStyle='rgba(93,202,165,0.88)';cx.fill();
+    @keyframes drift3 {
+        0%   { transform: translate(0px, 0px) scale(1); }
+        50%  { transform: translate(50px, 60px) scale(1.06); }
+        100% { transform: translate(0px, 0px) scale(1); }
     }
-  });
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.15; }
+        50%       { opacity: 0.55; }
+    }
+    @keyframes moveDots {
+        0%   { background-position: 0px 0px, 40px 40px; }
+        100% { background-position: 80px 80px, 120px 120px; }
+    }
 
-  requestAnimationFrame(draw);
-}
-draw();
-</script>
-</body>
-</html>
-    """, height=1, scrolling=False)
+    /* Full screen fixed background layer */
+    .stApp::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background: #020810;
+        pointer-events: none;
+    }
+
+    /* Animated star dots */
+    .stApp::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+            radial-gradient(1px 1px at 15% 20%, rgba(200,230,255,0.35) 0%, transparent 100%),
+            radial-gradient(1px 1px at 72% 8%,  rgba(200,230,255,0.25) 0%, transparent 100%),
+            radial-gradient(1px 1px at 45% 55%, rgba(200,230,255,0.3)  0%, transparent 100%),
+            radial-gradient(1px 1px at 88% 35%, rgba(200,230,255,0.2)  0%, transparent 100%),
+            radial-gradient(1px 1px at 30% 78%, rgba(200,230,255,0.3)  0%, transparent 100%),
+            radial-gradient(1px 1px at 60% 90%, rgba(200,230,255,0.2)  0%, transparent 100%),
+            radial-gradient(1px 1px at 5%  60%, rgba(200,230,255,0.25) 0%, transparent 100%),
+            radial-gradient(1px 1px at 93% 72%, rgba(200,230,255,0.2)  0%, transparent 100%),
+            radial-gradient(1px 1px at 50% 30%, rgba(200,230,255,0.3)  0%, transparent 100%),
+            radial-gradient(1px 1px at 22% 45%, rgba(200,230,255,0.2)  0%, transparent 100%),
+            radial-gradient(1px 1px at 78% 60%, rgba(200,230,255,0.25) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 35% 15%, rgba(93,202,165,0.4) 0%, transparent 100%),
+            radial-gradient(1.5px 1.5px at 65% 80%, rgba(55,138,221,0.35) 0%, transparent 100%),
+            radial-gradient(2px 2px at 10% 90%,  rgba(93,202,165,0.3) 0%, transparent 100%),
+            radial-gradient(2px 2px at 90% 15%,  rgba(55,138,221,0.3) 0%, transparent 100%);
+        animation: twinkle 4s ease-in-out infinite alternate;
+    }
+
+    /* Aurora blob 1 — teal, top left */
+    #aurora1 {
+        position: fixed;
+        top: -10vh; left: -10vw;
+        width: 65vw; height: 60vh;
+        border-radius: 50%;
+        background: radial-gradient(ellipse at center,
+            rgba(93,202,165,0.055) 0%,
+            rgba(93,202,165,0.02) 45%,
+            transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+        animation: drift1 18s ease-in-out infinite;
+        filter: blur(40px);
+    }
+
+    /* Aurora blob 2 — blue, right side */
+    #aurora2 {
+        position: fixed;
+        top: 20vh; right: -15vw;
+        width: 60vw; height: 70vh;
+        border-radius: 50%;
+        background: radial-gradient(ellipse at center,
+            rgba(55,138,221,0.05) 0%,
+            rgba(55,138,221,0.018) 45%,
+            transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+        animation: drift2 22s ease-in-out infinite;
+        filter: blur(50px);
+    }
+
+    /* Aurora blob 3 — purple, bottom */
+    #aurora3 {
+        position: fixed;
+        bottom: -20vh; left: 20vw;
+        width: 70vw; height: 55vh;
+        border-radius: 50%;
+        background: radial-gradient(ellipse at center,
+            rgba(127,119,221,0.045) 0%,
+            rgba(127,119,221,0.015) 45%,
+            transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+        animation: drift3 25s ease-in-out infinite;
+        filter: blur(45px);
+    }
+
+    /* Neural dot grid — subtle moving pattern */
+    #neural-grid {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+            radial-gradient(circle, rgba(93,202,165,0.08) 1px, transparent 1px),
+            radial-gradient(circle, rgba(55,138,221,0.05) 1px, transparent 1px);
+        background-size: 80px 80px, 130px 130px;
+        animation: moveDots 12s linear infinite;
+        opacity: 0.6;
+    }
+
+    /* Make sure ALL content sits above background */
+    .stApp {
+        background: #020810 !important;
+    }
+    section[data-testid="stMain"],
+    .main .block-container {
+        position: relative !important;
+        z-index: 2 !important;
+        background: transparent !important;
+    }
+    section[data-testid="stSidebar"] {
+        position: relative !important;
+        z-index: 100 !important;
+        background: rgba(2,8,16,0.92) !important;
+        backdrop-filter: blur(14px) !important;
+        border-right: 1px solid rgba(93,202,165,0.08) !important;
+    }
+    header[data-testid="stHeader"] {
+        position: relative !important;
+        z-index: 100 !important;
+        background: rgba(2,8,16,0.7) !important;
+        backdrop-filter: blur(10px) !important;
+    }
+    </style>
+
+    <!-- Aurora blobs injected as real DOM elements — no iframe -->
+    <div id="aurora1"></div>
+    <div id="aurora2"></div>
+    <div id="aurora3"></div>
+    <div id="neural-grid"></div>
+    """, unsafe_allow_html=True)
 
 def render_floating_chatbot():
     groq_key = ""
