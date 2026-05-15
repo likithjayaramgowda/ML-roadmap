@@ -47,209 +47,213 @@ st.set_page_config(
 )
 
 def render_animated_background():
+    st.markdown("""
+    <style>
+    .stApp { background: #020810 !important; }
+    section[data-testid="stSidebar"] {
+        background: rgba(2,8,16,0.95) !important;
+        z-index: 100 !important;
+        backdrop-filter: blur(10px) !important;
+    }
+    header[data-testid="stHeader"] {
+        background: rgba(2,8,16,0.85) !important;
+        z-index: 100 !important;
+    }
+    .main .block-container {
+        background: transparent !important;
+        z-index: 2 !important;
+        position: relative !important;
+    }
+    /* Background iframe — full screen behind everything */
+    iframe:nth-of-type(1) {
+        position: fixed !important;
+        top: 0 !important; left: 0 !important;
+        width: 100vw !important; height: 100vh !important;
+        z-index: 1 !important;
+        border: none !important;
+        pointer-events: none !important;
+    }
+    /* Collapse background iframe container — no layout space */
+    div:has(> iframe:nth-of-type(1)) {
+        height: 0 !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    /* Chatbot iframe — fixed bottom right */
+    iframe:nth-of-type(2) {
+        position: fixed !important;
+        bottom: 0 !important; right: 0 !important;
+        top: auto !important; left: auto !important;
+        width: 400px !important; height: 580px !important;
+        z-index: 9999 !important;
+        border: none !important;
+        pointer-events: all !important;
+        background: transparent !important;
+    }
+    div:has(> iframe:nth-of-type(2)) {
+        height: 0 !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    /* Page content above background */
+    section[data-testid="stSidebar"] { z-index: 100 !important; }
+    header[data-testid="stHeader"] { z-index: 100 !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
     components.html("""
 <!DOCTYPE html>
 <html>
 <head>
 <style>
-* { margin:0; padding:0; }
-html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
+  * { margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #020810; }
+  canvas { display: block; width: 100%; height: 100%; }
 </style>
 </head>
 <body>
+<canvas id="c"></canvas>
 <script>
-(function() {
-    function inject() {
-        var doc = (window.parent && window.parent.document) ? window.parent.document : document;
-        if (doc.getElementById('neural-bg-canvas')) return;
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+let W = cv.width = window.innerWidth;
+let H = cv.height = window.innerHeight;
+window.addEventListener('resize', () => { W = cv.width = window.innerWidth; H = cv.height = window.innerHeight; });
 
-        var canvas = doc.createElement('canvas');
-        canvas.id = 'neural-bg-canvas';
-        canvas.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:0!important;pointer-events:none!important;display:block!important;';
-        doc.body.insertBefore(canvas, doc.body.firstChild);
+const stars = Array.from({length:220},()=>({
+  x:Math.random()*W, y:Math.random()*H,
+  r:Math.random()*1.1+0.2,
+  a:Math.random()*0.45+0.1,
+  sp:Math.random()*0.018+0.004,
+  ph:Math.random()*Math.PI*2
+}));
 
-        var ctx = canvas.getContext('2d');
-        var W, H;
+const nodes = Array.from({length:60},()=>({
+  x:Math.random()*W, y:Math.random()*H,
+  vx:(Math.random()-0.5)*0.32,
+  vy:(Math.random()-0.5)*0.32,
+  r:Math.random()*2.2+1.1,
+  hub:Math.random()>0.83,
+  ph:Math.random()*Math.PI*2,
+  ps:Math.random()*0.014+0.005
+}));
 
-        function resize() {
-            W = canvas.width = window.parent.innerWidth || window.innerWidth;
-            H = canvas.height = window.parent.innerHeight || window.innerHeight;
-        }
-        resize();
-        (window.parent || window).addEventListener('resize', resize);
-
-        var STARS = Array.from({length:250}, function() { return {
-            x: Math.random()*W, y: Math.random()*H,
-            r: Math.random()*1.2+0.2, alpha: Math.random()*0.5+0.1,
-            sp: Math.random()*0.02+0.005, ph: Math.random()*Math.PI*2
-        }; });
-
-        var NODES = Array.from({length:65}, function() { return {
-            x: Math.random()*W, y: Math.random()*H,
-            vx: (Math.random()-0.5)*0.35, vy: (Math.random()-0.5)*0.35,
-            r: Math.random()*2.5+1.2, hub: Math.random()>0.82,
-            ph: Math.random()*Math.PI*2, ps: Math.random()*0.015+0.005
-        }; });
-
-        var PARTS = [];
-        function spawnP() {
-            for (var i=0;i<10;i++) {
-                var a=NODES[Math.floor(Math.random()*NODES.length)];
-                var b=NODES[Math.floor(Math.random()*NODES.length)];
-                var dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
-                if (d<200&&d>40) {
-                    PARTS.push({from:a,to:b,t:0,
-                        sp:Math.random()*0.006+0.003,
-                        sz:Math.random()*1.8+0.8,
-                        col:Math.random()>0.5?[93,202,165]:[55,138,221]});
-                    break;
-                }
-            }
-        }
-        for (var i=0;i<30;i++) spawnP();
-        setInterval(spawnP, 500);
-
-        var aT=0, frame=0;
-
-        function drawAurora() {
-            aT+=0.003;
-            var glows=[
-                {x:W*0.15,y:H*0.3,rx:380,ry:220,c:'93,202,165',a:0.055},
-                {x:W*0.78,y:H*0.55,rx:320,ry:240,c:'55,138,221',a:0.045},
-                {x:W*0.5,y:H*0.88,rx:400,ry:160,c:'127,119,221',a:0.038}
-            ];
-            glows.forEach(function(g,i) {
-                var ox=Math.sin(aT+i*1.2)*50, oy=Math.cos(aT*0.7+i)*35;
-                var cx=g.x+ox, cy=g.y+oy, mx=Math.max(g.rx,g.ry);
-                var grd=ctx.createRadialGradient(cx,cy,0,cx,cy,mx);
-                grd.addColorStop(0,'rgba('+g.c+','+g.a+')');
-                grd.addColorStop(0.5,'rgba('+g.c+','+(g.a*0.3)+')');
-                grd.addColorStop(1,'rgba('+g.c+',0)');
-                ctx.save();
-                ctx.translate(cx,cy);
-                ctx.scale(g.rx/mx,g.ry/mx);
-                ctx.beginPath();ctx.arc(0,0,mx,0,Math.PI*2);
-                ctx.fillStyle=grd;ctx.fill();ctx.restore();
-            });
-        }
-
-        function draw() {
-            frame++;
-            ctx.clearRect(0,0,W,H);
-            ctx.fillStyle='#020810';ctx.fillRect(0,0,W,H);
-            drawAurora();
-
-            STARS.forEach(function(s) {
-                var tw=0.5+0.5*Math.sin(frame*s.sp+s.ph);
-                ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-                ctx.fillStyle='rgba(200,230,255,'+(s.alpha*tw)+')';ctx.fill();
-            });
-
-            for (var i=0;i<NODES.length;i++) {
-                for (var j=i+1;j<NODES.length;j++) {
-                    var a=NODES[i],b=NODES[j];
-                    var dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
-                    var mx=(a.hub||b.hub)?230:155;
-                    if (d<mx) {
-                        var al=(1-d/mx)*((a.hub||b.hub)?0.5:0.2);
-                        ctx.strokeStyle=(a.hub||b.hub)?'rgba(55,138,221,'+al+')':'rgba(93,202,165,'+al+')';
-                        ctx.lineWidth=(a.hub||b.hub)?1.1:0.55;
-                        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-                    }
-                }
-            }
-
-            for (var i=PARTS.length-1;i>=0;i--) {
-                var p=PARTS[i];p.t+=p.sp;
-                if(p.t>1){PARTS.splice(i,1);continue;}
-                var x=p.from.x+(p.to.x-p.from.x)*p.t;
-                var y=p.from.y+(p.to.y-p.from.y)*p.t;
-                var al=Math.sin(p.t*Math.PI);
-                var g=ctx.createRadialGradient(x,y,0,x,y,p.sz*4);
-                g.addColorStop(0,'rgba('+p.col.join(',')+','+al*0.9+')');
-                g.addColorStop(1,'rgba('+p.col.join(',')+',0)');
-                ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,p.sz*4,0,Math.PI*2);ctx.fill();
-                ctx.beginPath();ctx.arc(x,y,p.sz,0,Math.PI*2);
-                ctx.fillStyle='rgba('+p.col.join(',')+','+al+')';ctx.fill();
-            }
-
-            NODES.forEach(function(n) {
-                n.x+=n.vx;n.y+=n.vy;
-                if(n.x<-30)n.x=W+30;if(n.x>W+30)n.x=-30;
-                if(n.y<-30)n.y=H+30;if(n.y>H+30)n.y=-30;
-                var pulse=1+Math.sin(frame*n.ps+n.ph)*(n.hub?0.5:0.25);
-                var r=n.r*pulse;
-                if(n.hub) {
-                    var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*7);
-                    g.addColorStop(0,'rgba(55,138,221,0.35)');
-                    g.addColorStop(0.4,'rgba(55,138,221,0.08)');
-                    g.addColorStop(1,'rgba(55,138,221,0)');
-                    ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,r*7,0,Math.PI*2);ctx.fill();
-                    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fillStyle='#378ADD';ctx.fill();
-                    ctx.beginPath();ctx.arc(n.x-r*0.3,n.y-r*0.3,r*0.32,0,Math.PI*2);
-                    ctx.fillStyle='rgba(180,220,255,0.7)';ctx.fill();
-                } else {
-                    var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*4);
-                    g.addColorStop(0,'rgba(93,202,165,0.22)');
-                    g.addColorStop(1,'rgba(93,202,165,0)');
-                    ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,r*4,0,Math.PI*2);ctx.fill();
-                    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
-                    ctx.fillStyle='rgba(93,202,165,0.9)';ctx.fill();
-                }
-            });
-
-            requestAnimationFrame(draw);
-        }
-        draw();
+const parts = [];
+function spawn(){
+  for(let i=0;i<12;i++){
+    const a=nodes[Math.floor(Math.random()*nodes.length)];
+    const b=nodes[Math.floor(Math.random()*nodes.length)];
+    const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<210&&d>50){
+      parts.push({a,b,t:0,sp:Math.random()*0.005+0.003,
+        sz:Math.random()*1.6+0.7,
+        c:Math.random()>0.5?[93,202,165]:[55,138,221]});
+      break;
     }
+  }
+}
+for(let i=0;i<28;i++) spawn();
+setInterval(spawn,480);
 
-    try {
-        if (document.readyState === 'complete') inject();
-        else document.addEventListener('DOMContentLoaded', inject);
-    } catch(e) {}
-})();
+let at=0,fr=0;
+const aurora=[
+  {bx:0.15,by:0.28,rx:400,ry:220,c:'93,202,165',a:0.052},
+  {bx:0.78,by:0.58,rx:340,ry:250,c:'55,138,221',a:0.042},
+  {bx:0.48,by:0.87,rx:420,ry:160,c:'127,119,221',a:0.036}
+];
+
+function draw(){
+  fr++;
+  at+=0.003;
+  cx.clearRect(0,0,W,H);
+  cx.fillStyle='#020810';
+  cx.fillRect(0,0,W,H);
+
+  aurora.forEach((g,i)=>{
+    const ox=Math.sin(at+i*1.3)*55, oy=Math.cos(at*0.75+i)*38;
+    const gx=g.bx*W+ox, gy=g.by*H+oy;
+    const mx=Math.max(g.rx,g.ry);
+    const gr=cx.createRadialGradient(gx,gy,0,gx,gy,mx);
+    gr.addColorStop(0,'rgba('+g.c+','+g.a+')');
+    gr.addColorStop(0.45,'rgba('+g.c+','+(g.a*0.28)+')');
+    gr.addColorStop(1,'rgba('+g.c+',0)');
+    cx.save();
+    cx.translate(gx,gy);
+    cx.scale(g.rx/mx,g.ry/mx);
+    cx.beginPath();cx.arc(0,0,mx,0,Math.PI*2);
+    cx.fillStyle=gr;cx.fill();
+    cx.restore();
+  });
+
+  stars.forEach(s=>{
+    const tw=0.5+0.5*Math.sin(fr*s.sp+s.ph);
+    cx.beginPath();cx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    cx.fillStyle='rgba(210,235,255,'+(s.a*tw)+')';
+    cx.fill();
+  });
+
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j];
+      const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+      const md=(a.hub||b.hub)?240:158;
+      if(d<md){
+        const al=(1-d/md)*((a.hub||b.hub)?0.52:0.2);
+        cx.strokeStyle=(a.hub||b.hub)?'rgba(55,138,221,'+al+')':'rgba(93,202,165,'+al+')';
+        cx.lineWidth=(a.hub||b.hub)?1.1:0.5;
+        cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();
+      }
+    }
+  }
+
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i]; p.t+=p.sp;
+    if(p.t>1){parts.splice(i,1);continue;}
+    const x=p.a.x+(p.b.x-p.a.x)*p.t;
+    const y=p.a.y+(p.b.y-p.a.y)*p.t;
+    const al=Math.sin(p.t*Math.PI);
+    const g=cx.createRadialGradient(x,y,0,x,y,p.sz*5);
+    g.addColorStop(0,'rgba('+p.c+','+(al*0.85)+')');
+    g.addColorStop(1,'rgba('+p.c+',0)');
+    cx.fillStyle=g;cx.beginPath();cx.arc(x,y,p.sz*5,0,Math.PI*2);cx.fill();
+    cx.beginPath();cx.arc(x,y,p.sz,0,Math.PI*2);
+    cx.fillStyle='rgba('+p.c+','+al+')';cx.fill();
+  }
+
+  nodes.forEach(n=>{
+    n.x+=n.vx; n.y+=n.vy;
+    if(n.x<-30)n.x=W+30; if(n.x>W+30)n.x=-30;
+    if(n.y<-30)n.y=H+30; if(n.y>H+30)n.y=-30;
+    const pulse=1+Math.sin(fr*n.ps+n.ph)*(n.hub?0.55:0.28);
+    const r=n.r*pulse;
+    if(n.hub){
+      const g=cx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*8);
+      g.addColorStop(0,'rgba(55,138,221,0.38)');
+      g.addColorStop(0.35,'rgba(55,138,221,0.08)');
+      g.addColorStop(1,'rgba(55,138,221,0)');
+      cx.fillStyle=g;cx.beginPath();cx.arc(n.x,n.y,r*8,0,Math.PI*2);cx.fill();
+      cx.beginPath();cx.arc(n.x,n.y,r,0,Math.PI*2);cx.fillStyle='#378ADD';cx.fill();
+      cx.beginPath();cx.arc(n.x-r*0.3,n.y-r*0.3,r*0.32,0,Math.PI*2);
+      cx.fillStyle='rgba(180,220,255,0.65)';cx.fill();
+    } else {
+      const g=cx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*4);
+      g.addColorStop(0,'rgba(93,202,165,0.2)');
+      g.addColorStop(1,'rgba(93,202,165,0)');
+      cx.fillStyle=g;cx.beginPath();cx.arc(n.x,n.y,r*4,0,Math.PI*2);cx.fill();
+      cx.beginPath();cx.arc(n.x,n.y,r,0,Math.PI*2);
+      cx.fillStyle='rgba(93,202,165,0.88)';cx.fill();
+    }
+  });
+
+  requestAnimationFrame(draw);
+}
+draw();
 </script>
 </body>
 </html>
-    """, height=1, scrolling=False)
-
-    st.markdown("""
-<style>
-.stApp { background: #020810 !important; }
-section[data-testid="stSidebar"] {
-    background: rgba(2,8,16,0.95) !important;
-    z-index: 100 !important;
-}
-header[data-testid="stHeader"] {
-    background: rgba(2,8,16,0.8) !important;
-    backdrop-filter: blur(8px) !important;
-    z-index: 100 !important;
-}
-.main .block-container {
-    position: relative !important;
-    z-index: 2 !important;
-    background: transparent !important;
-    max-width: 860px !important;
-    padding-right: 2rem !important;
-}
-section[data-testid="stMain"] {
-    position: relative !important;
-    z-index: 2 !important;
-}
-/* Collapse the background iframe container */
-div[data-testid="stIFrame"]:first-of-type {
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-}
-div[data-testid="stIFrame"]:first-of-type iframe {
-    border: none !important;
-    pointer-events: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
+    """, height=700, scrolling=False)
 
 def render_floating_chatbot():
     groq_key = ""
@@ -264,179 +268,126 @@ def render_floating_chatbot():
 <head>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
-html,body{{background:transparent;overflow:hidden;font-family:-apple-system,sans-serif}}
-#bubble{{
-    position:fixed;bottom:24px;right:24px;
-    width:52px;height:52px;border-radius:50%;
-    background:linear-gradient(135deg,#5DCAA5,#378ADD);
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;box-shadow:0 4px 24px rgba(93,202,165,0.5);
-    transition:transform .2s,box-shadow .2s;z-index:999;
-    animation: breathe 3s ease-in-out infinite;
+html,body{{background:transparent;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,sans-serif}}
+#bbl{{
+  position:fixed;bottom:24px;right:24px;width:54px;height:54px;
+  border-radius:50%;background:linear-gradient(135deg,#5DCAA5,#378ADD);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 0 0 0 rgba(93,202,165,0.5);
+  animation:pulse 2.5s ease-in-out infinite;z-index:999;transition:transform .2s;
 }}
-@keyframes breathe {{
-    0%,100% {{ box-shadow: 0 4px 24px rgba(93,202,165,0.4); }}
-    50% {{ box-shadow: 0 4px 36px rgba(93,202,165,0.8), 0 0 60px rgba(93,202,165,0.3); }}
+@keyframes pulse{{
+  0%{{box-shadow:0 0 0 0 rgba(93,202,165,0.5)}}
+  70%{{box-shadow:0 0 0 14px rgba(93,202,165,0)}}
+  100%{{box-shadow:0 0 0 0 rgba(93,202,165,0)}}
 }}
-#bubble:hover{{transform:scale(1.12)}}
-#bubble svg{{width:24px;height:24px;fill:white}}
+#bbl:hover{{transform:scale(1.1)}}
+#bbl svg{{width:25px;height:25px;fill:white}}
 #win{{
-    position:fixed;bottom:86px;right:24px;
-    width:340px;height:480px;
-    background:#0D1117;border:1px solid #30363D;
-    border-radius:16px;display:none;flex-direction:column;
-    box-shadow:0 20px 60px rgba(0,0,0,0.8),0 0 40px rgba(93,202,165,0.1);
-    z-index:998;overflow:hidden;
+  position:fixed;bottom:88px;right:24px;width:345px;height:490px;
+  background:#0D1117;border:1px solid #30363D;border-radius:16px;
+  display:none;flex-direction:column;
+  box-shadow:0 25px 80px rgba(0,0,0,0.85),0 0 50px rgba(93,202,165,0.08);
+  z-index:998;overflow:hidden;
 }}
-#win.open{{display:flex}}
+#win.open{{display:flex;animation:slideUp .25s ease}}
+@keyframes slideUp{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}
 #hdr{{
-    padding:12px 14px;
-    background:linear-gradient(135deg,#0D2137,#0D1117);
-    border-bottom:1px solid #21262D;
-    display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  padding:13px 15px;flex-shrink:0;
+  background:linear-gradient(135deg,#0d2137 0%,#0D1117 100%);
+  border-bottom:1px solid #21262D;
+  display:flex;align-items:center;justify-content:space-between;
 }}
 .hl{{display:flex;align-items:center;gap:9px}}
-.av{{
-    width:30px;height:30px;border-radius:50%;
-    background:linear-gradient(135deg,#5DCAA5,#378ADD);
-    display:flex;align-items:center;justify-content:center;font-size:14px;
-}}
+.av{{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#5DCAA5,#378ADD);display:flex;align-items:center;justify-content:center;font-size:15px}}
 .tt{{color:#E6EDF3;font-size:13px;font-weight:600}}
-.sb{{color:#7D8590;font-size:10px}}
-.cl{{color:#7D8590;cursor:pointer;font-size:20px;padding:2px 6px;border-radius:4px}}
+.sb{{color:#5DCAA5;font-size:10px;margin-top:1px}}
+.cl{{color:#7D8590;cursor:pointer;font-size:22px;line-height:1;padding:2px 6px;border-radius:4px}}
 .cl:hover{{color:#E6EDF3;background:#21262D}}
-#msgs{{
-    flex:1;overflow-y:auto;padding:12px;
-    display:flex;flex-direction:column;gap:8px;
-    scrollbar-width:thin;scrollbar-color:#30363D transparent;
-}}
-.m{{max-width:86%;padding:8px 12px;border-radius:10px;font-size:12.5px;line-height:1.5;word-wrap:break-word}}
-.m.u{{background:#1F6FEB22;border:1px solid #1F6FEB44;color:#E6EDF3;align-self:flex-end;border-bottom-right-radius:3px}}
-.m.b{{background:#161B22;border:1px solid #30363D;color:#C9D1D9;align-self:flex-start;border-bottom-left-radius:3px}}
-.m.t{{color:#7D8590;font-style:italic}}
-.qw{{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 8px;flex-shrink:0}}
-.qb{{
-    font-size:10.5px;padding:3px 9px;
-    background:#21262D;border:1px solid #30363D;
-    border-radius:99px;color:#8B949E;cursor:pointer;transition:all .15s;white-space:nowrap;
-}}
+#msgs{{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:#30363D transparent}}
+.m{{max-width:87%;padding:8px 12px;border-radius:11px;font-size:12.5px;line-height:1.55;word-wrap:break-word}}
+.u{{background:#1F6FEB22;border:1px solid #1F6FEB55;color:#E6EDF3;align-self:flex-end;border-bottom-right-radius:3px}}
+.b{{background:#161B22;border:1px solid #30363D;color:#C9D1D9;align-self:flex-start;border-bottom-left-radius:3px}}
+.t{{color:#7D8590;font-style:italic}}
+.qw{{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 10px;flex-shrink:0}}
+.qb{{font-size:10.5px;padding:3px 10px;background:#21262D;border:1px solid #30363D;border-radius:99px;color:#8B949E;cursor:pointer;transition:all .15s;white-space:nowrap}}
 .qb:hover{{background:#2D333B;color:#E6EDF3;border-color:#5DCAA5}}
-#ia{{padding:10px 12px;border-top:1px solid #21262D;display:flex;gap:7px;flex-shrink:0;background:#0D1117}}
-#inp{{
-    flex:1;background:#21262D;border:1px solid #30363D;
-    border-radius:7px;color:#E6EDF3;padding:7px 11px;
-    font-size:12px;outline:none;resize:none;height:36px;
-}}
-#inp:focus{{border-color:#5DCAA5}}
+#ia{{padding:10px 12px;border-top:1px solid #21262D;display:flex;gap:7px;flex-shrink:0;background:#0a0f14}}
+#inp{{flex:1;background:#21262D;border:1px solid #30363D;border-radius:8px;color:#E6EDF3;padding:7px 11px;font-size:12px;outline:none;resize:none;height:36px;font-family:inherit}}
+#inp:focus{{border-color:#5DCAA5;box-shadow:0 0 0 2px rgba(93,202,165,0.1)}}
 #inp::placeholder{{color:#7D8590}}
-#snd{{
-    width:36px;height:36px;border-radius:7px;
-    background:linear-gradient(135deg,#5DCAA5,#378ADD);
-    border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}}
+#snd{{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#5DCAA5,#378ADD);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}}
+#snd:hover{{opacity:0.85}}
 #snd svg{{width:15px;height:15px;fill:white}}
 </style>
 </head>
 <body>
-<div id="bubble" onclick="tog()">
-    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
+<div id="bbl" onclick="tog()">
+  <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.03 2 11c0 2.7 1.26 5.12 3.28 6.79L4 22l4.5-1.96C9.6 20.65 10.77 21 12 21c5.52 0 10-4.03 10-9S17.52 2 12 2z"/></svg>
 </div>
 <div id="win">
-    <div id="hdr">
-        <div class="hl">
-            <div class="av">🧠</div>
-            <div><div class="tt">ML Mentor</div><div class="sb">Roadmap-scoped · llama-3.3-70b</div></div>
-        </div>
-        <div class="cl" onclick="tog()">×</div>
+  <div id="hdr">
+    <div class="hl">
+      <div class="av">🧠</div>
+      <div><div class="tt">ML Mentor</div><div class="sb">● online · roadmap-scoped</div></div>
     </div>
-    <div id="msgs">
-        <div class="m b">Hey! Ask me about any concept, project, or resource in the roadmap 👋</div>
-    </div>
-    <div class="qw" id="qw">
-        <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
-        <span class="qb" onclick="sq('What to do in week 1?')">Week 1</span>
-        <span class="qb" onclick="sq('Walk me through tabular-baseline')">tabular-baseline</span>
-        <span class="qb" onclick="sq('Explain KV cache')">KV cache</span>
-        <span class="qb" onclick="sq('Quiz me on attention')">Quiz me ⚡</span>
-    </div>
-    <div id="ia">
-        <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
-        <button id="snd" onclick="send()">
-            <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
-        </button>
-    </div>
+    <div class="cl" onclick="tog()">×</div>
+  </div>
+  <div id="msgs">
+    <div class="m b">Hey Likith! 👋 Ask me anything about the roadmap — concepts, projects, interview prep, or study planning.</div>
+  </div>
+  <div class="qw" id="qw">
+    <span class="qb" onclick="sq('Explain LoRA mathematically')">LoRA math</span>
+    <span class="qb" onclick="sq('What to do in week 1?')">Week 1 plan</span>
+    <span class="qb" onclick="sq('Walk me through tabular-baseline project')">tabular-baseline</span>
+    <span class="qb" onclick="sq('Explain KV cache and why it matters')">KV cache</span>
+    <span class="qb" onclick="sq('Quiz me on transformer attention')">Quiz me ⚡</span>
+  </div>
+  <div id="ia">
+    <textarea id="inp" placeholder="Ask your ML mentor..."></textarea>
+    <button id="snd" onclick="send()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
 </div>
 <script>
 const KEY="{groq_key}";
-const SYS=`You are an ML roadmap mentor. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it.
-Roadmap covers: Math, Python ML toolchain, Classical ML, Neural nets, PyTorch, CNNs, LSTMs, Transformers, ViT, Diffusion, DDP/FSDP, HuggingFace, LoRA, QLoRA, SFT, DPO, RAG, vllm, MLOps, LangGraph, Agents. Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise under 250 words, use code examples.`;
-let msgs=[],open=false;
-function tog(){{open=!open;document.getElementById('win').classList.toggle('open',open);if(open)document.getElementById('inp').focus();}}
+const SYS=`You are an ML roadmap mentor for Likith. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it with: "I can only help with the ML roadmap topics!" Roadmap: Math (linear algebra, calculus, probability), Python toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, LightGBM, clustering, PCA), Neural nets+PyTorch (backprop, optimizers, training loop, DataLoader), Deep Learning (CNNs ResNet, LSTMs, Transformers self-attention RoPE, ViT, Diffusion), Training at scale (mixed precision, DDP, FSDP, DeepSpeed, Accelerate), HuggingFace (tokenization, AutoModel, peft LoRA QLoRA, trl SFT DPO GRPO), RAG (chunking, qdrant, hybrid BM25+dense, reranking, ragas), LLM internals (Flash Attention, KV cache, quantization GPTQ AWQ, speculative decoding), vllm serving, MLOps (DVC, mlflow, drift Evidently, Langfuse), Agents (LangGraph, MCP, guardrails). Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise under 250 words, practical, use short code examples.`;
+let msgs=[],isOpen=false;
+function tog(){{isOpen=!isOpen;document.getElementById('win').classList.toggle('open',isOpen);if(isOpen)document.getElementById('inp').focus();}}
 function sq(t){{document.getElementById('inp').value=t;send();}}
 function send(){{
-    const inp=document.getElementById('inp');
-    const txt=inp.value.trim();if(!txt)return;
-    inp.value='';add(txt,'u');msgs.push({{role:'user',content:txt}});
-    document.getElementById('qw').style.display='none';
-    const th=add('Thinking...','b t');
-    if(!KEY){{th.remove();add('⚠️ Add GROQ_API_KEY to Streamlit secrets.','b');return;}}
-    fetch('https://api.groq.com/openai/v1/chat/completions',{{
-        method:'POST',
-        headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
-        body:JSON.stringify({{model:'llama-3.3-70b-versatile',max_tokens:500,
-            messages:[{{role:'system',content:SYS}},...msgs]}})
-    }})
-    .then(r=>r.json())
-    .then(d=>{{th.remove();const r=d.choices?.[0]?.message?.content||'Sorry, something went wrong.';add(r,'b');msgs.push({{role:'assistant',content:r}});}})
-    .catch(()=>{{th.remove();add('Network error.','b');}});
+  const el=document.getElementById('inp');
+  const txt=el.value.trim();if(!txt)return;
+  el.value='';add(txt,'u');msgs.push({{role:'user',content:txt}});
+  document.getElementById('qw').style.display='none';
+  const th=add('Thinking...','b t');
+  if(!KEY){{th.remove();add('⚠️ Add GROQ_API_KEY to Streamlit secrets.','b');return;}}
+  fetch('https://api.groq.com/openai/v1/chat/completions',{{
+    method:'POST',
+    headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
+    body:JSON.stringify({{model:'llama-3.3-70b-versatile',max_tokens:500,
+      messages:[{{role:'system',content:SYS}},...msgs]}})
+  }}).then(r=>r.json()).then(d=>{{
+    th.remove();
+    const rep=d.choices?.[0]?.message?.content||'Something went wrong, try again.';
+    add(rep,'b');msgs.push({{role:'assistant',content:rep}});
+  }}).catch(()=>{{th.remove();add('Network error. Check connection.','b');}});
 }}
 function add(txt,cls){{
-    const el=document.createElement('div');el.className='m '+cls;el.textContent=txt;
-    const c=document.getElementById('msgs');c.appendChild(el);c.scrollTop=c.scrollHeight;return el;
+  const el=document.createElement('div');el.className='m '+cls;el.textContent=txt;
+  const c=document.getElementById('msgs');c.appendChild(el);c.scrollTop=c.scrollHeight;return el;
 }}
-document.getElementById('inp').addEventListener('keydown',e=>{{if(e.key==='Enter'&&!e.shiftKey){{e.preventDefault();send();}}}});
+document.getElementById('inp').addEventListener('keydown',e=>{{
+  if(e.key==='Enter'&&!e.shiftKey){{e.preventDefault();send();}};
+}});
 </script>
 </body>
 </html>
-    """, height=1, scrolling=False)
-
-    st.markdown("""
-    <style>
-    section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
-        height:0!important;overflow:visible!important;margin:0!important;padding:0!important;
-    }
-    section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
-        position:fixed!important;bottom:0!important;right:0!important;
-        top:auto!important;left:auto!important;
-        width:400px!important;height:560px!important;
-        z-index:9999!important;border:none!important;
-        background:transparent!important;margin:0!important;
-        pointer-events:all!important;max-width:none!important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    """, height=560, scrolling=False)
 
 render_animated_background()
 render_floating_chatbot()
-
-# Collapse containers holding both iframes so they take zero layout space
-st.markdown("""
-<style>
-section[data-testid="stMain"] .block-container > div > div:nth-child(1),
-section[data-testid="stMain"] .block-container > div > div:nth-child(2) {
-    height: 0 !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-section[data-testid="stMain"] .block-container > div > div:nth-child(1) iframe,
-section[data-testid="stMain"] .block-container > div > div:nth-child(2) iframe {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ── First-load toast ──────────────────────────────────────────────────────────
 if "welcomed" not in st.session_state:
