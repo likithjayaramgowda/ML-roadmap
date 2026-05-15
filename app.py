@@ -47,15 +47,6 @@ st.set_page_config(
 )
 
 def render_animated_background():
-    st.markdown("""
-    <style>
-    .stApp { background: #020810 !important; }
-    section[data-testid="stSidebar"] { background: #020810 !important; border-right: 1px solid #0d2137 !important; }
-    .main .block-container { position: relative; z-index: 1; }
-    header[data-testid="stHeader"] { background: transparent !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
     components.html("""
 <!DOCTYPE html>
 <html>
@@ -63,194 +54,160 @@ def render_animated_background():
 <style>
 * { margin:0; padding:0; }
 html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
-canvas { position:fixed; top:0; left:0; width:100vw; height:100vh; }
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
 <script>
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W = canvas.width = window.innerWidth;
-let H = canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+(function() {
+    function inject() {
+        var doc = (window.parent && window.parent.document) ? window.parent.document : document;
+        if (doc.getElementById('neural-bg-canvas')) return;
 
-// Layer 1: Deep starfield
-const STARS = Array.from({length: 180}, () => ({
-    x: Math.random() * W,
-    y: Math.random() * H,
-    r: Math.random() * 1.2 + 0.2,
-    alpha: Math.random() * 0.5 + 0.1,
-    twinkleSpeed: Math.random() * 0.02 + 0.005,
-    twinklePhase: Math.random() * Math.PI * 2
-}));
+        var canvas = doc.createElement('canvas');
+        canvas.id = 'neural-bg-canvas';
+        canvas.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:0!important;pointer-events:none!important;display:block!important;';
+        doc.body.insertBefore(canvas, doc.body.firstChild);
 
-// Layer 2: Neural network nodes
-const NODES = Array.from({length: 42}, () => ({
-    x: Math.random() * W,
-    y: Math.random() * H,
-    vx: (Math.random() - 0.5) * 0.3,
-    vy: (Math.random() - 0.5) * 0.3,
-    r: Math.random() * 2.5 + 1.2,
-    isHub: Math.random() > 0.82,
-    phase: Math.random() * Math.PI * 2,
-    pulseSpeed: Math.random() * 0.015 + 0.005
-}));
+        var ctx = canvas.getContext('2d');
+        var W, H;
 
-// Layer 3: Data particles flying along edges
-const PARTICLES = [];
-function spawnParticle() {
-    for (let attempt = 0; attempt < 10; attempt++) {
-        const a = NODES[Math.floor(Math.random() * NODES.length)];
-        const b = NODES[Math.floor(Math.random() * NODES.length)];
-        const dx = a.x - b.x, dy = a.y - b.y;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < 200 && d > 40) {
-            PARTICLES.push({ from: a, to: b, t: 0, speed: Math.random() * 0.006 + 0.003,
-                size: Math.random() * 1.8 + 0.8,
-                color: Math.random() > 0.5 ? [93,202,165] : [55,138,221] });
-            break;
+        function resize() {
+            W = canvas.width = window.parent.innerWidth || window.innerWidth;
+            H = canvas.height = window.parent.innerHeight || window.innerHeight;
         }
-    }
-}
-for (let i = 0; i < 25; i++) spawnParticle();
-setInterval(spawnParticle, 600);
+        resize();
+        (window.parent || window).addEventListener('resize', resize);
 
-// Layer 4: Slow aurora / nebula in background
-let auroraT = 0;
+        var STARS = Array.from({length:250}, function() { return {
+            x: Math.random()*W, y: Math.random()*H,
+            r: Math.random()*1.2+0.2, alpha: Math.random()*0.5+0.1,
+            sp: Math.random()*0.02+0.005, ph: Math.random()*Math.PI*2
+        }; });
 
-function drawAurora() {
-    auroraT += 0.003;
-    const glows = [
-        { x: W * 0.15, y: H * 0.3,  rx: 320, ry: 180, hue: '93,202,165', a: 0.028 },
-        { x: W * 0.75, y: H * 0.6,  rx: 280, ry: 200, hue: '55,138,221', a: 0.022 },
-        { x: W * 0.5,  y: H * 0.85, rx: 350, ry: 140, hue: '127,119,221', a: 0.018 },
-    ];
-    glows.forEach((g, i) => {
-        const ox = Math.sin(auroraT + i * 1.2) * 40;
-        const oy = Math.cos(auroraT * 0.7 + i) * 30;
-        const grad = ctx.createRadialGradient(
-            g.x + ox, g.y + oy, 0,
-            g.x + ox, g.y + oy, Math.max(g.rx, g.ry)
-        );
-        grad.addColorStop(0,   `rgba(${g.hue},${g.a})`);
-        grad.addColorStop(0.5, `rgba(${g.hue},${g.a * 0.4})`);
-        grad.addColorStop(1,   `rgba(${g.hue},0)`);
-        ctx.save();
-        ctx.scale(g.rx / Math.max(g.rx, g.ry), g.ry / Math.max(g.rx, g.ry));
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc((g.x + ox) / (g.rx / Math.max(g.rx, g.ry)),
-                (g.y + oy) / (g.ry / Math.max(g.rx, g.ry)),
-                Math.max(g.rx, g.ry), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
-}
+        var NODES = Array.from({length:65}, function() { return {
+            x: Math.random()*W, y: Math.random()*H,
+            vx: (Math.random()-0.5)*0.35, vy: (Math.random()-0.5)*0.35,
+            r: Math.random()*2.5+1.2, hub: Math.random()>0.82,
+            ph: Math.random()*Math.PI*2, ps: Math.random()*0.015+0.005
+        }; });
 
-let frame = 0;
-function draw() {
-    frame++;
-
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#020810';
-    ctx.fillRect(0, 0, W, H);
-
-    drawAurora();
-
-    STARS.forEach(s => {
-        const tw = 0.5 + 0.5 * Math.sin(frame * s.twinkleSpeed + s.twinklePhase);
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(200,230,255,${s.alpha * tw})`;
-        ctx.fill();
-    });
-
-    for (let i = 0; i < NODES.length; i++) {
-        for (let j = i+1; j < NODES.length; j++) {
-            const a = NODES[i], b = NODES[j];
-            const dx = a.x - b.x, dy = a.y - b.y;
-            const d = Math.sqrt(dx*dx+dy*dy);
-            const maxD = (a.isHub || b.isHub) ? 220 : 150;
-            if (d < maxD) {
-                const alpha = (1 - d/maxD) * (a.isHub || b.isHub ? 0.45 : 0.18);
-                ctx.strokeStyle = (a.isHub || b.isHub)
-                    ? `rgba(55,138,221,${alpha})`
-                    : `rgba(93,202,165,${alpha})`;
-                ctx.lineWidth = a.isHub || b.isHub ? 1.0 : 0.5;
-                ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
-                ctx.stroke();
+        var PARTS = [];
+        function spawnP() {
+            for (var i=0;i<10;i++) {
+                var a=NODES[Math.floor(Math.random()*NODES.length)];
+                var b=NODES[Math.floor(Math.random()*NODES.length)];
+                var dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+                if (d<200&&d>40) {
+                    PARTS.push({from:a,to:b,t:0,
+                        sp:Math.random()*0.006+0.003,
+                        sz:Math.random()*1.8+0.8,
+                        col:Math.random()>0.5?[93,202,165]:[55,138,221]});
+                    break;
+                }
             }
         }
-    }
+        for (var i=0;i<30;i++) spawnP();
+        setInterval(spawnP, 500);
 
-    for (let i = PARTICLES.length - 1; i >= 0; i--) {
-        const p = PARTICLES[i];
-        p.t += p.speed;
-        if (p.t > 1) { PARTICLES.splice(i, 1); continue; }
-        const x = p.from.x + (p.to.x - p.from.x) * p.t;
-        const y = p.from.y + (p.to.y - p.from.y) * p.t;
-        const alpha = Math.sin(p.t * Math.PI);
+        var aT=0, frame=0;
 
-        const g = ctx.createRadialGradient(x, y, 0, x, y, p.size * 4);
-        g.addColorStop(0, `rgba(${p.color.join(',')},${alpha * 0.8})`);
-        g.addColorStop(1, `rgba(${p.color.join(',')},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x, y, p.size * 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(x, y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${p.color.join(',')},${alpha})`;
-        ctx.fill();
-    }
-
-    NODES.forEach(n => {
-        n.x += n.vx; n.y += n.vy;
-        if (n.x < -30) n.x = W+30; if (n.x > W+30) n.x = -30;
-        if (n.y < -30) n.y = H+30; if (n.y > H+30) n.y = -30;
-
-        const pulse = 1 + Math.sin(frame * n.pulseSpeed + n.phase) * (n.isHub ? 0.5 : 0.25);
-        const r = n.r * pulse;
-
-        if (n.isHub) {
-            const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 6);
-            g.addColorStop(0, 'rgba(55,138,221,0.3)');
-            g.addColorStop(0.5, 'rgba(55,138,221,0.06)');
-            g.addColorStop(1, 'rgba(55,138,221,0)');
-            ctx.fillStyle = g;
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r * 6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-            ctx.fillStyle = '#378ADD';
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(n.x - r*0.3, n.y - r*0.3, r*0.3, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(180,220,255,0.7)';
-            ctx.fill();
-        } else {
-            const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 4);
-            g.addColorStop(0, 'rgba(93,202,165,0.2)');
-            g.addColorStop(1, 'rgba(93,202,165,0)');
-            ctx.fillStyle = g;
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r * 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(93,202,165,0.85)';
-            ctx.fill();
+        function drawAurora() {
+            aT+=0.003;
+            var glows=[
+                {x:W*0.15,y:H*0.3,rx:380,ry:220,c:'93,202,165',a:0.055},
+                {x:W*0.78,y:H*0.55,rx:320,ry:240,c:'55,138,221',a:0.045},
+                {x:W*0.5,y:H*0.88,rx:400,ry:160,c:'127,119,221',a:0.038}
+            ];
+            glows.forEach(function(g,i) {
+                var ox=Math.sin(aT+i*1.2)*50, oy=Math.cos(aT*0.7+i)*35;
+                var cx=g.x+ox, cy=g.y+oy, mx=Math.max(g.rx,g.ry);
+                var grd=ctx.createRadialGradient(cx,cy,0,cx,cy,mx);
+                grd.addColorStop(0,'rgba('+g.c+','+g.a+')');
+                grd.addColorStop(0.5,'rgba('+g.c+','+(g.a*0.3)+')');
+                grd.addColorStop(1,'rgba('+g.c+',0)');
+                ctx.save();
+                ctx.translate(cx,cy);
+                ctx.scale(g.rx/mx,g.ry/mx);
+                ctx.beginPath();ctx.arc(0,0,mx,0,Math.PI*2);
+                ctx.fillStyle=grd;ctx.fill();ctx.restore();
+            });
         }
-    });
 
-    requestAnimationFrame(draw);
-}
-draw();
+        function draw() {
+            frame++;
+            ctx.clearRect(0,0,W,H);
+            ctx.fillStyle='#020810';ctx.fillRect(0,0,W,H);
+            drawAurora();
+
+            STARS.forEach(function(s) {
+                var tw=0.5+0.5*Math.sin(frame*s.sp+s.ph);
+                ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+                ctx.fillStyle='rgba(200,230,255,'+(s.alpha*tw)+')';ctx.fill();
+            });
+
+            for (var i=0;i<NODES.length;i++) {
+                for (var j=i+1;j<NODES.length;j++) {
+                    var a=NODES[i],b=NODES[j];
+                    var dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+                    var mx=(a.hub||b.hub)?230:155;
+                    if (d<mx) {
+                        var al=(1-d/mx)*((a.hub||b.hub)?0.5:0.2);
+                        ctx.strokeStyle=(a.hub||b.hub)?'rgba(55,138,221,'+al+')':'rgba(93,202,165,'+al+')';
+                        ctx.lineWidth=(a.hub||b.hub)?1.1:0.55;
+                        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+                    }
+                }
+            }
+
+            for (var i=PARTS.length-1;i>=0;i--) {
+                var p=PARTS[i];p.t+=p.sp;
+                if(p.t>1){PARTS.splice(i,1);continue;}
+                var x=p.from.x+(p.to.x-p.from.x)*p.t;
+                var y=p.from.y+(p.to.y-p.from.y)*p.t;
+                var al=Math.sin(p.t*Math.PI);
+                var g=ctx.createRadialGradient(x,y,0,x,y,p.sz*4);
+                g.addColorStop(0,'rgba('+p.col.join(',')+','+al*0.9+')');
+                g.addColorStop(1,'rgba('+p.col.join(',')+',0)');
+                ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,p.sz*4,0,Math.PI*2);ctx.fill();
+                ctx.beginPath();ctx.arc(x,y,p.sz,0,Math.PI*2);
+                ctx.fillStyle='rgba('+p.col.join(',')+','+al+')';ctx.fill();
+            }
+
+            NODES.forEach(function(n) {
+                n.x+=n.vx;n.y+=n.vy;
+                if(n.x<-30)n.x=W+30;if(n.x>W+30)n.x=-30;
+                if(n.y<-30)n.y=H+30;if(n.y>H+30)n.y=-30;
+                var pulse=1+Math.sin(frame*n.ps+n.ph)*(n.hub?0.5:0.25);
+                var r=n.r*pulse;
+                if(n.hub) {
+                    var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*7);
+                    g.addColorStop(0,'rgba(55,138,221,0.35)');
+                    g.addColorStop(0.4,'rgba(55,138,221,0.08)');
+                    g.addColorStop(1,'rgba(55,138,221,0)');
+                    ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,r*7,0,Math.PI*2);ctx.fill();
+                    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fillStyle='#378ADD';ctx.fill();
+                    ctx.beginPath();ctx.arc(n.x-r*0.3,n.y-r*0.3,r*0.32,0,Math.PI*2);
+                    ctx.fillStyle='rgba(180,220,255,0.7)';ctx.fill();
+                } else {
+                    var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*4);
+                    g.addColorStop(0,'rgba(93,202,165,0.22)');
+                    g.addColorStop(1,'rgba(93,202,165,0)');
+                    ctx.fillStyle=g;ctx.beginPath();ctx.arc(n.x,n.y,r*4,0,Math.PI*2);ctx.fill();
+                    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+                    ctx.fillStyle='rgba(93,202,165,0.9)';ctx.fill();
+                }
+            });
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    try {
+        if (document.readyState === 'complete') inject();
+        else document.addEventListener('DOMContentLoaded', inject);
+    } catch(e) {}
+})();
 </script>
 </body>
 </html>
@@ -258,56 +215,38 @@ draw();
 
     st.markdown("""
 <style>
-iframe {
-    border: none !important;
+.stApp { background: #020810 !important; }
+section[data-testid="stSidebar"] {
+    background: rgba(2,8,16,0.95) !important;
+    z-index: 100 !important;
 }
-
-div[data-testid="stIFrame"]:first-of-type iframe,
-div.stHtml iframe:first-of-type,
-[data-testid="stMain"] iframe:first-of-type {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 0 !important;
-    pointer-events: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    max-width: none !important;
-    max-height: none !important;
+header[data-testid="stHeader"] {
+    background: rgba(2,8,16,0.8) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 100 !important;
 }
-
-div[data-testid="stIFrame"]:first-of-type,
-div.stHtml:first-of-type {
+.main .block-container {
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+    max-width: 860px !important;
+    padding-right: 2rem !important;
+}
+section[data-testid="stMain"] {
+    position: relative !important;
+    z-index: 2 !important;
+}
+/* Collapse the background iframe container */
+div[data-testid="stIFrame"]:first-of-type {
     height: 0 !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
 }
-
-.main .block-container {
-    position: relative !important;
-    z-index: 2 !important;
-    background: transparent !important;
-}
-
-section[data-testid="stSidebar"] {
-    z-index: 10 !important;
-    background: rgba(2, 8, 16, 0.85) !important;
-    backdrop-filter: blur(10px) !important;
-}
-
-header[data-testid="stHeader"] {
-    z-index: 10 !important;
-    background: rgba(2, 8, 16, 0.7) !important;
-    backdrop-filter: blur(8px) !important;
-}
-
-.stApp {
-    background: #020810 !important;
+div[data-testid="stIFrame"]:first-of-type iframe {
+    border: none !important;
+    pointer-events: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -472,7 +411,7 @@ document.getElementById('inp').addEventListener('keydown',e=>{{if(e.key==='Enter
         width:400px!important;height:560px!important;
         z-index:9999!important;border:none!important;
         background:transparent!important;margin:0!important;
-        pointer-events:all!important;
+        pointer-events:all!important;max-width:none!important;
     }
     </style>
     """, unsafe_allow_html=True)
