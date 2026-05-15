@@ -1378,24 +1378,32 @@ RES_COLORS = {
     "WEB":    ("#0D1F33", "#5BA4D4", "🌐"),
 }
 
-# ── CSS ───────────────────────────────────────────────────────────────────────
+# ── CSS ─────────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+:root {
+    --bg-deep:   #020810;
+    --bg-card:   #161B22;
+    --bg-raised: #1C2128;
+    --border:    #21262D;
+    --border-hi: #30363D;
+    --text-hi:   #E6EDF3;
+    --text-mid:  #C9D1D9;
+    --text-lo:   #8B949E;
+    --teal:      #5DCAA5;
+    --blue:      #378ADD;
+    --purple:    #7F77DD;
+    --r:         12px;
+    --r-sm:      8px;
 }
 
-section[data-testid="stAppViewContainer"] {
-    background: transparent !important;
-}
-section[data-testid="stAppViewContainer"] > div:first-child {
-    background: transparent !important;
-}
-.stApp {
-    background: #0D1117 !important;
-}
+html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
+
+section[data-testid="stAppViewContainer"] { background: transparent !important; }
+section[data-testid="stAppViewContainer"] > div:first-child { background: transparent !important; }
+.stApp { background: var(--bg-deep) !important; }
 
 .main .block-container {
     padding-top: 1.5rem;
@@ -1403,147 +1411,233 @@ section[data-testid="stAppViewContainer"] > div:first-child {
     max-width: 1100px;
 }
 
-/* Cards */
+/* ─── Cards ──────────────────────────────────── */
 .card {
-    background: #161B22;
-    border: 1px solid #21262D;
-    border-radius: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
     padding: 1rem 1.2rem;
     margin-bottom: .75rem;
+    transition: border-color .2s, box-shadow .2s;
+}
+.card:hover { border-color: var(--border-hi); box-shadow: 0 4px 20px rgba(0,0,0,.35); }
+
+/* ─── Phase pills ─────────────────────────── */
+.phase-header { display: flex; align-items: center; gap: 12px; margin: 1.5rem 0 1rem; }
+.phase-pill {
+    font-size: 10px; font-weight: 700;
+    padding: 5px 16px; border-radius: 99px;
+    letter-spacing: .12em; text-transform: uppercase;
+    background: transparent; border: 1.5px solid;
+    display: inline-block;
+    font-family: 'Outfit', sans-serif;
 }
 
-.phase-header {
-    display: flex; align-items: center; gap: 12px;
-    margin: 1.5rem 0 1rem;
-}
-.phase-pill {
-    font-size: 11px; font-weight: 600; padding: 3px 12px;
-    border-radius: 99px; letter-spacing: .04em;
-}
+/* ─── Section divider ─────────────────────── */
 .section-divider {
-    font-size: 11px; font-weight: 600; color: #8B949E;
-    letter-spacing: .07em; text-transform: uppercase;
-    margin: 1.2rem 0 .4rem; padding-bottom: 4px;
-    border-bottom: 1px solid #21262D;
+    font-size: 10px; font-weight: 700; color: var(--text-lo);
+    letter-spacing: .1em; text-transform: uppercase;
+    margin: 1.4rem 0 .6rem;
+    padding: 0 0 6px 10px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
 }
+.section-divider::before {
+    content: ''; position: absolute; left: 0; top: 0;
+    width: 3px; height: 14px;
+    background: var(--teal); border-radius: 2px;
+}
+
+/* ─── Topics ────────────────────────────────── */
 .topic-row {
     display: grid; grid-template-columns: 1.6fr 1fr;
-    border-bottom: 1px solid #21262D; padding: 8px 0;
+    border-bottom: 1px solid var(--border); padding: 8px 0;
     align-items: center; gap: 12px;
 }
-.topic-name { font-size: 13.5px; font-weight: 500; color: #E6EDF3; }
-.topic-sub  { font-size: 11px; color: #8B949E; margin-top: 2px; }
-.res-badge  {
+.topic-name { font-size: 13.5px; font-weight: 500; color: var(--text-hi); }
+.topic-sub  { font-size: 11px; color: var(--text-lo); margin-top: 2px; }
+
+/* ─── Resource badge ──────────────────────── */
+.res-badge {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; padding: 4px 10px; border-radius: 6px;
     text-decoration: none; font-weight: 500; width: fit-content;
+    transition: filter .15s, transform .1s;
 }
+.res-badge:hover { filter: brightness(1.18); transform: translateY(-1px); }
+
+/* ─── Project cards ───────────────────────── */
 .proj-card {
-    border: 1px solid #21262D; border-radius: 12px;
+    border: 1px solid var(--border); border-radius: var(--r);
     padding: 1rem 1.2rem; margin-bottom: .75rem;
-    background: #161B22;
+    background: var(--bg-card);
+    transition: border-color .2s, box-shadow .2s, transform .15s;
 }
-.proj-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: #E6EDF3; }
-.proj-desc  { font-size: 13px; color: #8B949E; line-height: 1.5; margin-bottom: 8px; }
+.proj-card:hover {
+    border-color: var(--teal);
+    box-shadow: 0 4px 24px rgba(93,202,165,.12);
+    transform: translateY(-1px);
+}
+.proj-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--text-hi); }
+.proj-desc  { font-size: 13px; color: var(--text-lo); line-height: 1.55; margin-bottom: 8px; }
+
+/* ─── Tags ──────────────────────────────────────── */
 .tag {
     display: inline-block; font-size: 11px; padding: 2px 8px;
-    border-radius: 6px; background: #21262D; color: #8B949E;
+    border-radius: 4px; background: var(--bg-raised); color: var(--text-lo);
     margin-right: 4px; margin-bottom: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--border);
 }
-.milestone-item {
-    font-size: 13px; color: #C9D1D9; padding: 5px 0;
-    border-bottom: 1px solid #21262D; display: flex; gap: 8px; align-items: flex-start;
-}
-.q-card {
-    background: #161B22; border: 1px solid #21262D; border-radius: 8px;
-    padding: 10px 14px; font-size: 13px; color: #C9D1D9;
-    margin-bottom: 6px;
-}
-.mental-card {
-    border: 1px solid #21262D; border-radius: 10px;
-    padding: .85rem 1rem; margin-bottom: .6rem;
-    background: #161B22;
-}
-.mental-title { font-size: 14px; font-weight: 600; color: #E6EDF3; margin-bottom: 3px; }
-.mental-body  { font-size: 13px; color: #8B949E; line-height: 1.5; }
-.stat-box {
-    background: #161B22; border: 1px solid #21262D; border-radius: 10px;
-    padding: 1rem; text-align: center;
-}
-.stat-val   { font-size: 26px; font-weight: 600; color: #E6EDF3; }
-.stat-label { font-size: 12px; color: #8B949E; margin-top: 2px; }
 
-/* Big progress ring card */
+/* ─── Milestones ─────────────────────────────── */
+.milestone-item {
+    font-size: 13px; color: var(--text-mid); padding: 5px 0;
+    border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start;
+}
+
+/* ─── Interview Q-cards ───────────────────── */
+.q-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 10px 14px; font-size: 13px; color: var(--text-mid);
+    margin-bottom: 6px;
+    transition: border-color .2s, box-shadow .2s;
+}
+.q-card:hover { border-color: var(--blue); box-shadow: 0 2px 12px rgba(55,138,221,.1); }
+
+/* ─── Mental model cards ──────────────────── */
+.mental-card {
+    border: 1px solid var(--border); border-radius: var(--r);
+    padding: .85rem 1rem; margin-bottom: .6rem;
+    background: var(--bg-card);
+    transition: border-color .2s, box-shadow .2s;
+}
+.mental-card:hover { border-color: var(--purple); box-shadow: 0 2px 16px rgba(127,119,221,.1); }
+.mental-title { font-size: 14px; font-weight: 600; color: var(--text-hi); margin-bottom: 3px; }
+.mental-body  { font-size: 13px; color: var(--text-lo); line-height: 1.5; }
+
+/* ─── Stat boxes ─────────────────────────────── */
+.stat-box {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 1rem; text-align: center;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+}
+.stat-box:hover {
+    border-color: var(--teal);
+    box-shadow: 0 4px 20px rgba(93,202,165,.1);
+    transform: translateY(-2px);
+}
+.stat-val   { font-size: 28px; font-weight: 700; color: var(--text-hi); }
+.stat-label { font-size: 12px; color: var(--text-lo); margin-top: 2px; letter-spacing: .03em; }
+
+/* ─── Progress ring (big %) ─────────────────── */
 .progress-ring-card {
-    background: #161B22;
-    border: 1px solid #21262D;
-    border-radius: 12px;
-    padding: 2rem 1.2rem;
-    text-align: center;
-    margin-bottom: 1rem;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 2rem 1.2rem; text-align: center; margin-bottom: 1rem;
+    position: relative; overflow: hidden;
+}
+.progress-ring-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(93,202,165,.06) 0%, transparent 65%);
+    pointer-events: none;
 }
 .progress-pct {
-    font-size: 64px;
-    font-weight: 700;
-    color: #5DCAA5;
-    line-height: 1;
+    font-size: 72px; font-weight: 700; color: var(--teal); line-height: 1;
+    text-shadow: 0 0 40px rgba(93,202,165,.35);
+    position: relative; z-index: 1;
 }
-.progress-sub {
-    font-size: 14px;
-    color: #8B949E;
-    margin-top: 6px;
-}
+.progress-sub { font-size: 14px; color: var(--text-lo); margin-top: 8px; position: relative; z-index: 1; }
 
-/* Quote card */
+/* ─── Quote card ──────────────────────────────── */
 .quote-card {
-    background: #161B22;
-    border: 1px solid #21262D;
-    border-left: 3px solid #5DCAA5;
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
-    margin-bottom: 1.2rem;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-left: 3px solid var(--teal); border-radius: var(--r);
+    padding: 1rem 1.2rem; margin-bottom: 1.2rem;
 }
-.quote-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #5DCAA5;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-.quote-text {
-    font-size: 16px;
-    font-style: italic;
-    color: #E6EDF3;
-    line-height: 1.5;
-}
-.quote-author {
-    font-size: 13px;
-    color: #8B949E;
-    margin-top: 6px;
-}
+.quote-label { font-size: 10px; font-weight: 700; color: var(--teal); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+.quote-text  { font-size: 16px; font-style: italic; color: var(--text-hi); line-height: 1.6; }
+.quote-author { font-size: 13px; color: var(--text-lo); margin-top: 6px; }
 
-/* Phase tip box */
+/* ─── Tip box ───────────────────────────────────── */
 .tip-box {
-    background: #161B22;
-    border: 1px solid #21262D;
-    border-radius: 10px;
-    padding: .75rem 1rem;
-    margin-bottom: 1rem;
-    font-size: 13px;
-    color: #C9D1D9;
-    line-height: 1.5;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-left: 3px solid var(--blue); border-radius: var(--r);
+    padding: .75rem 1rem; margin-bottom: 1rem;
+    font-size: 13px; color: var(--text-mid); line-height: 1.5;
 }
 
-/* Month cards on overview */
+/* ─── Phase progress bars (custom HTML) ─────────── */
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+.phase-bar-wrap  { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.phase-bar-label { font-size: 13px; font-weight: 600; min-width: 100px; }
+.phase-bar-track { flex: 1; background: var(--border); border-radius: 99px; height: 10px; overflow: hidden; }
+.phase-bar-fill  { height: 10px; border-radius: 99px; background-size: 200% auto; animation: shimmer 2.5s linear infinite; }
+.phase-bar-count { font-size: 12px; color: var(--text-lo); min-width: 90px; text-align: right; }
+
+/* ─── Native st.progress styling ──────────────── */
+div[data-testid="stProgress"] { padding: 0 !important; }
+div[data-testid="stProgress"] > div {
+    background: var(--border) !important; border-radius: 99px !important;
+    height: 6px !important; overflow: hidden !important;
+}
+div[data-testid="stProgress"] > div > div {
+    background: linear-gradient(90deg, var(--teal) 0%, var(--blue) 100%) !important;
+    border-radius: 99px !important;
+    box-shadow: 0 0 6px rgba(93,202,165,.4) !important;
+}
+
+/* ─── Month cards ─────────────────────────────── */
 .month-card {
-    border-radius: 0 8px 8px 0;
-    background: #161B22;
-    margin-bottom: .75rem;
-    padding: .75rem 1rem;
+    border-radius: 0 var(--r) var(--r) 0;
+    background: var(--bg-card); margin-bottom: .75rem;
+    padding: .75rem 1rem; border: 1px solid var(--border);
+    transition: transform .15s;
+}
+.month-card:hover { transform: translateX(2px); }
+
+/* ─── Sidebar nav ─────────────────────────────── */
+section[data-testid="stSidebar"] .stRadio > div {
+    display: flex; flex-direction: column; gap: 2px;
+}
+section[data-testid="stSidebar"] .stRadio label {
+    display: flex !important; align-items: center !important;
+    padding: 8px 12px !important; border-radius: 8px !important;
+    font-size: 13px !important; font-weight: 500 !important;
+    color: var(--text-lo) !important; cursor: pointer !important;
+    transition: background .15s, color .15s, border-color .15s !important;
+    border: 1px solid transparent !important;
+    margin: 0 !important;
+}
+section[data-testid="stSidebar"] .stRadio label:hover {
+    background: var(--bg-card) !important; color: var(--text-hi) !important;
+}
+section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
+    background: rgba(93,202,165,.08) !important;
+    color: var(--teal) !important;
+    border-color: rgba(93,202,165,.2) !important;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child,
+section[data-testid="stSidebar"] .stRadio label > span:first-child { display: none !important; }
+
+/* ─── Buttons ───────────────────────────────────── */
+.stButton > button {
+    border-radius: var(--r-sm) !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 500 !important;
 }
 
-stButton > button { border-radius: 8px !important; }
+/* ─── Mobile ──────────────────────────────────────── */
+@media (max-width: 768px) {
+    .topic-row { grid-template-columns: 1fr; gap: 6px; }
+    .main .block-container { padding-left: 1rem; padding-right: 1rem; }
+    .phase-bar-count { display: none; }
+    .stat-val { font-size: 20px; }
+    .progress-pct { font-size: 52px; }
+    div[data-testid="stIFrame"]:nth-of-type(2) iframe { width: 100vw !important; max-width: 380px !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1575,9 +1669,16 @@ def _phase_progress(phase_key):
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🧠 ML Roadmap")
-    st.markdown("**6 months to tier-1**")
-    st.markdown("---")
+    st.markdown("""
+    <div style="padding:.25rem 0 1rem;border-bottom:1px solid #21262D;margin-bottom:.5rem;">
+        <div style="font-size:17px;font-weight:700;color:#E6EDF3;display:flex;align-items:center;gap:8px;font-family:'Outfit',sans-serif;">
+            🧠 ML Roadmap
+        </div>
+        <div style="font-size:11px;color:#8B949E;margin-top:3px;letter-spacing:.03em;">
+            6 months · Tier-1 Engineer
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     page = st.radio(
         "Navigate",
@@ -1585,13 +1686,52 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown("---")
-    st.markdown(f"**Overall progress**")
-    st.progress(pct_total / 100, text=f"{pct_total}% · {done_total}/{total_items} done")
-    st.markdown("---")
-    st.markdown("**Daily target:** 2h weekdays + 3–4h Saturday")
-    st.markdown("**Weekly target:** ~15 hours")
-    st.caption("Tick topics as you finish them →")
+    b_done, b_total = _phase_progress("beginner")
+    i_done, i_total = _phase_progress("intermediate")
+    a_done, a_total = _phase_progress("advanced")
+    b_pct = int(b_done / b_total * 100) if b_total else 0
+    i_pct = int(i_done / i_total * 100) if i_total else 0
+    a_pct = int(a_done / a_total * 100) if a_total else 0
+
+    st.markdown(f"""
+    <div style="border-top:1px solid #21262D;padding-top:.75rem;margin-top:.25rem;">
+        <div style="font-size:9px;font-weight:700;color:#8B949E;letter-spacing:.1em;margin-bottom:8px;">PROGRESS</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="flex:1;background:#21262D;border-radius:99px;height:5px;overflow:hidden;">
+                <div style="width:{pct_total}%;background:linear-gradient(90deg,#5DCAA5,#378ADD);height:5px;border-radius:99px;box-shadow:0 0 6px rgba(93,202,165,.5);"></div>
+            </div>
+            <span style="font-size:11px;color:#5DCAA5;font-weight:700;min-width:30px;text-align:right;">{pct_total}%</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:9px;color:#5DCAA5;min-width:64px;font-weight:700;letter-spacing:.05em;">BEGINNER</span>
+                <div style="flex:1;background:#21262D;border-radius:99px;height:3px;overflow:hidden;">
+                    <div style="width:{b_pct}%;background:#5DCAA5;height:3px;border-radius:99px;"></div>
+                </div>
+                <span style="font-size:9px;color:#8B949E;min-width:22px;text-align:right;">{b_pct}%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:9px;color:#378ADD;min-width:64px;font-weight:700;letter-spacing:.05em;">INTER</span>
+                <div style="flex:1;background:#21262D;border-radius:99px;height:3px;overflow:hidden;">
+                    <div style="width:{i_pct}%;background:#378ADD;height:3px;border-radius:99px;"></div>
+                </div>
+                <span style="font-size:9px;color:#8B949E;min-width:22px;text-align:right;">{i_pct}%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:9px;color:#7F77DD;min-width:64px;font-weight:700;letter-spacing:.05em;">ADVANCED</span>
+                <div style="flex:1;background:#21262D;border-radius:99px;height:3px;overflow:hidden;">
+                    <div style="width:{a_pct}%;background:#7F77DD;height:3px;border-radius:99px;"></div>
+                </div>
+                <span style="font-size:9px;color:#8B949E;min-width:22px;text-align:right;">{a_pct}%</span>
+            </div>
+        </div>
+        <div style="font-size:11px;color:#8B949E;line-height:1.9;border-top:1px solid #21262D;padding-top:.6rem;">
+            <div>⏱&nbsp; 2h/day weekdays</div>
+            <div>📅&nbsp; 3–4h Saturday</div>
+            <div style="color:#5DCAA5;margin-top:4px;font-size:10px;">↓ Tick topics as you finish</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ── Helper renderers ──────────────────────────────────────────────────────────
 
@@ -1610,7 +1750,7 @@ def render_resource(t):
 
 def render_phase(phase_key, tip_html=None):
     phase = ROADMAP[phase_key]
-    pill_style = f"background:{phase['bg']};color:{phase['color']};"
+    pill_style = f"color:{phase['color']};border-color:{phase['color']};box-shadow:0 0 14px {phase['color']}44;"
 
     if tip_html:
         st.markdown(f'<div class="tip-box">{tip_html}</div>', unsafe_allow_html=True)
@@ -1625,7 +1765,20 @@ def render_phase(phase_key, tip_html=None):
 
     p_done, p_total = _phase_progress(phase_key)
     p_pct = int(p_done / p_total * 100) if p_total else 0
-    st.progress(p_pct / 100, text=f"{p_pct}% of this phase complete")
+    st.markdown(
+        f'<div style="margin:.25rem 0 1.2rem;">'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        f'<span style="font-size:10px;font-weight:700;color:#8B949E;letter-spacing:.08em;">PHASE PROGRESS</span>'
+        f'<span style="font-size:11px;font-weight:700;color:{phase["color"]}">{p_pct}%</span>'
+        f'</div>'
+        f'<div style="background:#21262D;border-radius:99px;height:8px;overflow:hidden;">'
+        f'<div style="width:{p_pct}%;height:8px;border-radius:99px;'
+        f'background:linear-gradient(90deg,{phase["color"]}88,{phase["color"]});'
+        f'box-shadow:0 0 8px {phase["color"]}66;"></div>'
+        f'</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     for sec in phase["sections"]:
         st.markdown(f'<div class="section-divider">{sec["name"]}</div>', unsafe_allow_html=True)
@@ -1725,12 +1878,14 @@ if page == "Overview":
         pd, pt = _phase_progress(pk)
         pp = int(pd / pt * 100) if pt else 0
         st.markdown(
-            f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">'
-            f'<span style="font-size:13px;font-weight:500;color:{color};min-width:90px">{label}</span>'
-            f'<div style="flex:1;background:#21262D;border-radius:99px;height:8px;">'
-            f'<div style="width:{pp}%;background:{color};height:8px;border-radius:99px;"></div>'
+            f'<div class="phase-bar-wrap">'
+            f'<span class="phase-bar-label" style="color:{color}">{label}</span>'
+            f'<div class="phase-bar-track">'
+            f'<div class="phase-bar-fill" style="width:{pp}%;'
+            f'background:linear-gradient(90deg,{color}77 0%,{color} 50%,{color}77 100%);'
+            f'box-shadow:0 0 8px {color}66;"></div>'
             f'</div>'
-            f'<span style="font-size:12px;color:#8B949E;min-width:90px;text-align:right">{pd} / {pt} done</span>'
+            f'<span class="phase-bar-count">{pd} / {pt} done</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -1808,7 +1963,7 @@ elif page == "Projects":
 
     for phase_key in ["beginner", "intermediate", "advanced"]:
         phase = ROADMAP[phase_key]
-        pill_style = f"background:{phase['bg']};color:{phase['color']};"
+        pill_style = f"color:{phase['color']};border-color:{phase['color']};box-shadow:0 0 14px {phase['color']}44;"
         st.markdown(
             f'<span class="phase-pill" style="{pill_style}">{phase["label"]} — {phase["months"]}</span>',
             unsafe_allow_html=True,
@@ -2013,8 +2168,8 @@ elif page == "Notifications":
         pct = int(done / total * 100) if total else 0
 
         st.markdown(f"""
-        <div style="background:#161B22; border:1px solid #30363D; border-left: 4px solid #5DCAA5;
-                    border-radius:10px; padding:1rem 1.2rem; font-family:sans-serif;">
+        <div style="background:#161B22; border:1px solid #21262D; border-left: 4px solid #5DCAA5;
+                    border-radius:12px; padding:1rem 1.2rem; font-family:'Outfit',sans-serif;">
             <div style="font-size:13px; color:#7D8590; margin-bottom:4px">📱 Preview</div>
             <div style="font-size:15px; font-weight:600; color:#E6EDF3; margin-bottom:4px">
                 🧠 ML Roadmap — Daily Check-in
