@@ -7,9 +7,21 @@ import requests
 import time as time_module
 
 
+import re as _re
+
+_TOPIC_RE = _re.compile(r'^[A-Za-z0-9_-]{3,64}$')
+
+def _validate_topic(topic: str) -> str:
+    """Return sanitized topic or raise ValueError."""
+    topic = topic.strip()
+    if not _TOPIC_RE.match(topic):
+        raise ValueError("Topic must be 3–64 characters: letters, numbers, hyphens, underscores only.")
+    return topic
+
 def send_ntfy(topic: str, title: str, message: str, tags: list = None, priority: str = "default") -> bool:
     """Send a push notification via ntfy.sh — completely free, no auth needed."""
     try:
+        topic = _validate_topic(topic)
         headers = {
             "Title": title,
             "Priority": priority,
@@ -22,6 +34,8 @@ def send_ntfy(topic: str, title: str, message: str, tags: list = None, priority:
             timeout=10
         )
         return response.status_code == 200
+    except ValueError:
+        return False
     except Exception:
         return False
 
@@ -308,13 +322,7 @@ header[data-testid="stHeader"] {
 """, unsafe_allow_html=True)
 
 def render_floating_chatbot():
-    groq_key = ""
-    try:
-        groq_key = st.secrets.get("GROQ_API_KEY", "")
-    except:
-        pass
-
-    components.html(f"""
+    components.html("""
     <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     body {{ background: transparent; overflow: hidden; font-family: -apple-system, sans-serif; }}
@@ -447,61 +455,38 @@ def render_floating_chatbot():
     </div>
 
     <script>
-    const KEY = "{groq_key}";
-    const SYS = `You are an ML roadmap mentor. ONLY answer questions about this 6-month ML Engineer Roadmap. Refuse anything outside it with: "I'm your roadmap mentor — ask me about the ML roadmap topics only!"
-
-Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (numpy, pandas, sklearn, mlflow, wandb), Classical ML (regression, trees, XGBoost, LightGBM, clustering, PCA), Neural nets + PyTorch (backprop, optimizers, training loop, DataLoader, checkpoints), Deep Learning (CNNs ResNet EfficientNet, LSTMs, Transformers self-attention multi-head RoPE ALiBi, ViT, Diffusion DDPM), Training at scale (mixed precision bf16 fp16, DDP FSDP DeepSpeed ZeRO, Accelerate), NLP + HuggingFace (BPE tokenization, AutoModel AutoTokenizer, peft LoRA QLoRA, trl SFT DPO GRPO), RAG (chunking, qdrant vector DB, hybrid BM25+dense, reranking, ragas eval), LLM internals (Flash Attention, KV cache, quantization GPTQ AWQ GGUF, speculative decoding), vllm serving, MLOps (DVC mlflow drift Evidently Langfuse), Agents (LangGraph MCP tool-calling guardrails). Projects: tabular-baseline, mnist-from-scratch-then-torch, rag-on-your-docs, qlora-domain-tune, prod-llm-platform, agent-with-evals. Be concise (under 250 words), practical, use short code examples.`;
-
-    let msgs = [];
     let open = false;
 
-    function toggle() {{
+    function toggle() {
         open = !open;
         document.getElementById('win').classList.toggle('open', open);
         if (open) document.getElementById('inp').focus();
-    }}
+    }
 
-    function sq(t) {{ document.getElementById('inp').value = t; send(); }}
+    function sq(t) { document.getElementById('inp').value = t; nudge(); }
 
-    function send() {{
+    function nudge() {
         const inp = document.getElementById('inp');
-        const txt = inp.value.trim();
-        if (!txt) return;
+        if (!inp.value.trim()) return;
         inp.value = '';
-        add(txt, 'u');
-        msgs.push({{role:'user', content:txt}});
         document.getElementById('qw').style.display = 'none';
-        const th = add('Thinking...', 'b t');
-        if (!KEY) {{ th.remove(); add('⚠️ No GROQ_API_KEY in Streamlit secrets.', 'b'); return; }}
-        fetch('https://api.groq.com/openai/v1/chat/completions', {{
-            method:'POST',
-            headers:{{'Content-Type':'application/json','Authorization':'Bearer '+KEY}},
-            body:JSON.stringify({{model:'llama-3.3-70b-versatile', max_tokens:500,
-                messages:[{{role:'system',content:SYS}},...msgs]}})
-        }})
-        .then(r=>r.json())
-        .then(d=>{{
-            th.remove();
-            const rep = d.choices?.[0]?.message?.content || 'Sorry, something went wrong.';
-            add(rep,'b');
-            msgs.push({{role:'assistant',content:rep}});
-        }})
-        .catch(()=>{{ th.remove(); add('Network error.','b'); }});
-    }}
+        add('Open the AI Mentor page in the sidebar to chat — your question is ready to paste there!', 'b');
+    }
 
-    function add(txt, cls) {{
+    function add(txt, cls) {
         const el = document.createElement('div');
-        el.className = 'm '+cls;
+        el.className = 'm ' + cls;
         el.textContent = txt;
         const c = document.getElementById('msgs');
         c.appendChild(el);
         c.scrollTop = c.scrollHeight;
         return el;
-    }}
+    }
 
-    document.getElementById('inp').addEventListener('keydown', e=>{{
-        if (e.key==='Enter' && !e.shiftKey) {{ e.preventDefault(); send(); }}
-    }});
+    document.getElementById('snd').addEventListener('click', nudge);
+    document.getElementById('inp').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); nudge(); }
+    });
     </script>
     """, height=1, scrolling=False)
 
@@ -1596,7 +1581,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "Notifications"],
+        ["Overview", "Beginner", "Intermediate", "Advanced", "Projects", "Interview Prep", "AI Mentor", "Notifications"],
         label_visibility="collapsed",
     )
 
@@ -1897,6 +1882,71 @@ elif page == "Interview Prep":
     ]:
         st.markdown(f"⭐ &nbsp; {story}")
 
+elif page == "AI Mentor":
+    st.markdown("# AI Mentor")
+    st.caption("Powered by Groq (llama-3.3-70b) — roadmap-scoped. API call stays on the server; your key is never sent to the browser.")
+
+    col_clear, _ = st.columns([1, 5])
+    with col_clear:
+        if st.button("Clear chat"):
+            st.session_state.messages = []
+            st.rerun()
+
+    if not st.session_state.messages:
+        st.markdown("**Try asking:**")
+        starter_qs = [
+            "Explain how LoRA works mathematically",
+            "Help me debug my PyTorch training loop — loss isn't decreasing",
+            "What should I focus on in week 1?",
+            "Walk me through the tabular-baseline project step by step",
+            "What's the difference between DDP and FSDP?",
+            "How do I know if my RAG pipeline has data leakage?",
+            "Quiz me on transformer attention",
+        ]
+        cols = st.columns(2)
+        for i, q in enumerate(starter_qs):
+            if cols[i % 2].button(q, key=f"starter_{i}"):
+                st.session_state.messages.append({"role": "user", "content": q})
+                st.rerun()
+
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if prompt := st.chat_input("Ask your ML mentor anything..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        api_key = None
+        try:
+            api_key = st.secrets.get("GROQ_API_KEY", None)
+        except Exception:
+            pass
+
+        if not api_key:
+            st.warning("No API key found. Add `GROQ_API_KEY = 'gsk_...'` to `.streamlit/secrets.toml`.", icon="⚠️")
+        else:
+            try:
+                from groq import Groq
+                client = Groq(api_key=api_key)
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        response = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            max_tokens=1024,
+                            messages=[{"role": "system", "content": SYSTEM_PROMPT}] +
+                                     [{"role": m["role"], "content": m["content"]}
+                                      for m in st.session_state.messages],
+                        )
+                        reply = response.choices[0].message.content
+                        st.markdown(reply)
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+            except ImportError:
+                st.error("The `groq` package is not installed. Run `pip install groq`.")
+            except Exception as e:
+                st.error(f"API error: {e}")
+
 elif page == "Notifications":
     st.markdown("# Notifications")
     st.caption("Free push notifications via ntfy.sh — no account needed.")
@@ -1919,9 +1969,14 @@ elif page == "Notifications":
         help="Only use letters, numbers, and hyphens. No spaces."
     )
     if topic:
-        st.session_state["ntfy_topic"] = topic
-        st.markdown(f"**Your ntfy channel:** `ntfy.sh/{topic}`")
-        st.caption(f"In the ntfy app, subscribe to topic: `{topic}`")
+        if not _TOPIC_RE.match(topic.strip()):
+            st.error("Topic must be 3–64 characters: letters, numbers, hyphens, and underscores only. No spaces or special characters.")
+            topic = ""
+        else:
+            topic = topic.strip()
+            st.session_state["ntfy_topic"] = topic
+            st.markdown(f"**Your ntfy channel:** `ntfy.sh/{topic}`")
+            st.caption(f"In the ntfy app, subscribe to topic: `{topic}`")
 
     st.markdown("### Step 3 — Set your daily reminder time")
     notif_time = st.time_input(
