@@ -334,7 +334,34 @@ document.getElementById('inp').addEventListener('keydown',e=>{{
 </script>
 </body>
 </html>
-    """, height=560, scrolling=False)
+    """, height=1, scrolling=False)
+
+    st.markdown("""
+    <style>
+    /* Collapse chatbot iframe container completely */
+    div:has(iframe):last-of-type {
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 0 !important;
+    }
+    div:has(iframe):last-of-type iframe {
+        position: fixed !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        left: auto !important;
+        width: 400px !important;
+        height: 560px !important;
+        z-index: 9999 !important;
+        border: none !important;
+        pointer-events: all !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 render_animated_background()
 render_floating_chatbot()
