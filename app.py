@@ -370,10 +370,11 @@ def render_floating_chatbot():
     except:
         pass
 
+    st.markdown('<div id="chatbot-wrapper"></div>', unsafe_allow_html=True)
     components.html(f"""
     <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-    body {{ background: transparent; overflow: hidden; font-family: -apple-system, sans-serif; }}
+    body {{ background: transparent; overflow: hidden; pointer-events: all; font-family: -apple-system, sans-serif; }}
 
     #bubble {{
         position: fixed;
@@ -558,47 +559,51 @@ Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (nump
     document.getElementById('inp').addEventListener('keydown', e=>{{
         if (e.key==='Enter' && !e.shiftKey) {{ e.preventDefault(); send(); }}
     }});
+    // Make sure this iframe marks itself as interactive
+    document.documentElement.style.pointerEvents = 'all';
+    document.body.style.pointerEvents = 'all';
     </script>
     """, height=1, scrolling=False)
 
     st.markdown("""
 <style>
-div:has(iframe):last-of-type iframe {
+/* Target by position — the very last iframe on the page */
+iframe[title="st.iframe"] {
     position: fixed !important;
     bottom: 0 !important;
     right: 0 !important;
     top: auto !important;
     left: auto !important;
-    width: 400px !important;
-    height: 560px !important;
+    width: 420px !important;
+    height: 570px !important;
     z-index: 99999 !important;
     border: none !important;
     pointer-events: all !important;
     background: transparent !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
-/* Ensure nothing overlaps the chatbot area */
-section[data-testid="stSidebar"],
-header[data-testid="stHeader"] {
-    z-index: 10 !important;
+/* The container holding the chatbot iframe */
+#chatbot-wrapper + div,
+#chatbot-wrapper ~ div {
+    height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
-.main .block-container {
-    z-index: 0 !important;
-}
-.stApp::before,
-.stApp::after {
-    z-index: 0 !important;
+
+/* CRITICAL — make sure NOTHING has pointer-events that covers bottom-right */
+.bg-blob, #b1, #b2, #b3,
+.stApp::before, .stApp::after {
     pointer-events: none !important;
 }
-#b1, #b2, #b3 {
-    z-index: 0 !important;
-    pointer-events: none !important;
-}
-/* Only chatbot at top z-index */
-div:has(iframe):last-of-type iframe {
-    z-index: 99999 !important;
-    pointer-events: all !important;
-}
+
+/* Everything else normal z-index */
+.main .block-container { z-index: 2 !important; }
+section[data-testid="stSidebar"] { z-index: 50 !important; }
+header[data-testid="stHeader"] { z-index: 50 !important; }
 </style>
 """, unsafe_allow_html=True)
 
