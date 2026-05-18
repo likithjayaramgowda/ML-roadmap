@@ -560,31 +560,35 @@ Roadmap: Math (linear algebra, calculus, probability), Python ML toolchain (nump
 
     st.markdown("""
 <style>
-div[data-testid="stIFrame"]:nth-of-type(2) iframe,
-div.stHtml:nth-of-type(2) iframe,
-[data-testid="stMain"] iframe:nth-of-type(2) {
+div:has(iframe):last-of-type iframe {
     position: fixed !important;
     bottom: 0 !important;
     right: 0 !important;
     top: auto !important;
     left: auto !important;
-    width: 420px !important;
-    height: 600px !important;
+    width: 400px !important;
+    height: 560px !important;
     z-index: 9999 !important;
-    pointer-events: all !important;
     border: none !important;
+    pointer-events: all !important;
     background: transparent !important;
-    margin: 0 !important;
-    max-width: none !important;
 }
 
-div[data-testid="stIFrame"]:nth-of-type(2),
-div.stHtml:nth-of-type(2) {
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
+/* Ensure nothing overlaps the chatbot area */
+section[data-testid="stSidebar"],
+header[data-testid="stHeader"] {
+    z-index: 10 !important;
+}
+.main .block-container,
+.stApp::before,
+.stApp::after,
+#b1, #b2, #b3 {
+    z-index: 0 !important;
+}
+/* Only chatbot at top z-index */
+div:has(iframe):last-of-type iframe {
+    z-index: 9999 !important;
+    pointer-events: all !important;
 }
 </style>
 """, unsafe_allow_html=True)
